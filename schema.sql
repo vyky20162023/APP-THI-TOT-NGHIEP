@@ -127,7 +127,7 @@ BEGIN
         NEW.email,
         COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
         COALESCE(NEW.raw_user_meta_data->>'role', 'student'),
-        COALESCE(NEW.raw_user_meta_data->>'school_name', 'Trường THPT'),
+        COALESCE(NEW.raw_user_meta_data->>'school_name', 'Trường THCS & THPT Nguyễn Thái Bình'),
         COALESCE(NEW.raw_user_meta_data->>'avatar_url', '')
     )
     ON CONFLICT (id) DO UPDATE SET

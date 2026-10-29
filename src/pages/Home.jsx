@@ -48,14 +48,26 @@ export default function Home() {
   return (
     <div className="space-y-16 pb-20">
       {/* HERO SECTION */}
-      <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-24 bg-gradient-to-b from-brand-50/70 via-white to-slate-50 border-b border-slate-200/80">
+      <section className="relative overflow-hidden pt-10 pb-16 sm:pt-16 sm:pb-24 bg-gradient-to-b from-brand-50/70 via-white to-slate-50 border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-100/80 border border-brand-200 text-brand-800 text-xs sm:text-sm font-bold mb-6">
-            <Sparkles className="w-4 h-4 text-brand-600" />
-            Cấu Trúc Đề Thi Chuẩn Mới Nhất Bộ GD&ĐT (Áp Dụng Từ 2025)
+          {/* Logo & School Header */}
+          <div className="flex flex-col items-center justify-center mb-6">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white p-2 border-2 border-brand-200 shadow-lg shadow-brand-500/10 hover:scale-105 transition-transform overflow-hidden mb-3">
+              <img 
+                src="/logo.jpg" 
+                alt="Logo Trường THCS & THPT Nguyễn Thái Bình" 
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-100/80 border border-brand-200 text-brand-800 text-xs sm:text-sm font-extrabold uppercase tracking-wide">
+              Trường THCS & THPT Nguyễn Thái Bình
+            </div>
+            <span className="text-xs sm:text-sm font-bold text-slate-600 mt-1">
+              Bắc Khánh Vĩnh — Tỉnh Khánh Hòa
+            </span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight max-w-4xl mx-auto leading-tight sm:leading-none">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight max-w-4xl mx-auto leading-tight">
             Hệ Thống Thi Thử Tốt Nghiệp <br className="hidden sm:inline" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-indigo-600 to-brand-800">
               THPT Quốc Gia 2025

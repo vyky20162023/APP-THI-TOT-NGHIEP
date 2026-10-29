@@ -85,7 +85,7 @@ export function AuthProvider({ children }) {
         data: {
           full_name: metadata.full_name || '',
           role: metadata.role || 'student',
-          school_name: metadata.school_name || 'Trường THPT',
+          school_name: metadata.school_name || 'Trường THCS & THPT Nguyễn Thái Bình',
         },
       },
     });

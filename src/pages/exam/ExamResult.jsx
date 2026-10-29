@@ -389,13 +389,19 @@ export default function ExamResult() {
 
             {/* KHUNG GIẤY CHỨNG NHẬN CHUẨN */}
             <div className="border-4 border-double border-amber-600/60 p-6 sm:p-8 rounded-2xl bg-gradient-to-b from-amber-50/20 via-white to-amber-50/10 text-center relative">
-              {/* Tiêu ngữ */}
-              <div className="mb-6">
-                <div className="text-xs sm:text-sm font-black tracking-widest text-slate-800 uppercase">
-                  BỘ GIÁO DỤC VÀ ĐÀO TẠO
+              {/* Tiêu ngữ & Logo Trường */}
+              <div className="mb-5 flex flex-col items-center">
+                <div className="w-16 h-16 bg-white p-1 rounded-2xl border-2 border-amber-300 shadow-sm mb-2 overflow-hidden">
+                  <img src="/logo.jpg" alt="Logo THCS & THPT Nguyễn Thái Bình" className="w-full h-full object-contain" />
                 </div>
-                <div className="text-[11px] font-bold text-slate-500 tracking-wider">
-                  HỆ THỐNG KHẢO THÍ ĐÁNH GIÁ NĂNG LỰC TỐT NGHIỆP THPT
+                <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+                  SỞ GIÁO DỤC VÀ ĐÀO TẠO KHÁNH HÒA
+                </div>
+                <div className="text-xs sm:text-sm font-black tracking-wider text-slate-900 uppercase">
+                  TRƯỜNG THCS & THPT NGUYỄN THÁI BÌNH
+                </div>
+                <div className="text-[11px] font-semibold text-slate-500">
+                  Bắc Khánh Vĩnh — Tỉnh Khánh Hòa
                 </div>
                 <div className="w-20 h-0.5 bg-amber-600 mx-auto mt-2"></div>
               </div>
@@ -486,10 +492,10 @@ export default function ExamResult() {
 
                 <div className="text-right">
                   <div className="text-[11px] text-slate-400 font-semibold italic">
-                    Hà Nội, ngày {new Date().getDate()} tháng {new Date().getMonth() + 1} năm {new Date().getFullYear()}
+                    Khánh Vĩnh, ngày {new Date().getDate()} tháng {new Date().getMonth() + 1} năm {new Date().getFullYear()}
                   </div>
                   <div className="text-xs font-bold text-slate-800 uppercase mt-0.5">
-                    HỘI ĐỒNG KHẢO THÍ TRỰC TUYẾN
+                    HỘI ĐỒNG KHẢO THÍ - THCS & THPT NGUYỄN THÁI BÌNH
                   </div>
                   <div className="text-[10px] font-semibold text-emerald-600 mt-0.5">
                     [Đã ký số xác thực điện tử]

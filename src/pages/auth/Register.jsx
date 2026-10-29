@@ -7,7 +7,7 @@ export default function Register() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [schoolName, setSchoolName] = useState('');
+  const [schoolName, setSchoolName] = useState('Trường THCS & THPT Nguyễn Thái Bình');
   const [role, setRole] = useState('student');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -52,14 +52,17 @@ export default function Register() {
       <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/90 shadow-xl shadow-slate-200/50">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-700 to-brand-500 text-white flex items-center justify-center mx-auto mb-3 shadow-lg shadow-brand-500/25">
-            <GraduationCap className="w-8 h-8" />
+          <div className="w-16 h-16 rounded-2xl bg-white p-1 border-2 border-brand-200 shadow-md flex items-center justify-center mx-auto mb-3 overflow-hidden">
+            <img src="/logo.jpg" alt="Logo THCS & THPT Nguyễn Thái Bình" className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
             Tạo Tài Khoản Mới
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Gia nhập nền tảng ôn thi tốt nghiệp THPT Quốc Gia 2025
+          <p className="text-xs font-bold text-brand-600 mt-1 uppercase">
+            Trường THCS & THPT Nguyễn Thái Bình
+          </p>
+          <p className="text-[11px] text-slate-400">
+            Bắc Khánh Vĩnh — Tỉnh Khánh Hòa
           </p>
         </div>
 

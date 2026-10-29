@@ -74,15 +74,27 @@ export default function App() {
           {/* Footer chuẩn EdTech */}
           <footer className="border-t border-slate-200 bg-white py-8 text-center text-xs text-slate-500">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="font-semibold text-slate-700">
-                Hệ Thống Thi Thử Tốt Nghiệp THPT Quốc Gia (Lớp 12) &copy; 2025
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/logo.jpg" 
+                  alt="Logo THCS & THPT Nguyễn Thái Bình" 
+                  className="w-10 h-10 object-contain rounded-xl border border-slate-200 p-0.5 bg-white shadow-xs" 
+                />
+                <div className="text-left">
+                  <div className="font-extrabold text-slate-800 text-xs sm:text-sm">
+                    TRƯỜNG THCS & THPT NGUYỄN THÁI BÌNH
+                  </div>
+                  <div className="text-slate-500 text-[11px]">
+                    Bắc Khánh Vĩnh, Tỉnh Khánh Hòa • Khảo Thí THPT Quốc Gia &copy; 2025
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-4 text-slate-400 font-medium">
-                <span>Chuẩn quy chế khảo thí Bộ GD&ĐT</span>
+              <div className="flex items-center gap-4 text-slate-400 font-medium text-xs">
+                <span>Cấu trúc Bộ GD&ĐT 2025</span>
                 <span>•</span>
-                <span>Render Toán KaTeX</span>
+                <span>Render KaTeX</span>
                 <span>•</span>
-                <span>Bảo mật Supabase RLS</span>
+                <span>Supabase RLS</span>
               </div>
             </div>
           </footer>

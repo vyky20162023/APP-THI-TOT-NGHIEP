@@ -49,25 +49,25 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo & Brand Name */}
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 to-brand-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform overflow-hidden">
+            <Link to="/" className="flex items-center gap-3 group">
+              <div className="w-11 h-11 rounded-xl bg-white p-0.5 border border-slate-200 shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden shrink-0">
                 <img 
                   src="/logo.jpg" 
-                  alt="THPT Logo" 
-                  className="w-full h-full object-cover" 
+                  alt="Logo Trường THCS & THPT Nguyễn Thái Bình" 
+                  className="w-full h-full object-contain" 
                   onError={(e) => {
                     e.target.style.display = 'none';
                     e.target.nextSibling.style.display = 'block';
                   }} 
                 />
-                <GraduationCap className="w-6 h-6 hidden" />
+                <GraduationCap className="w-6 h-6 hidden text-brand-600" />
               </div>
               <div>
-                <span className="font-extrabold text-lg tracking-tight text-slate-900 flex items-center gap-1.5">
-                  THPT QG <span className="text-brand-600 font-black">2025</span>
+                <span className="font-extrabold text-xs sm:text-sm md:text-base tracking-tight text-slate-900 flex items-center gap-1.5 uppercase">
+                  THCS & THPT Nguyễn Thái Bình
                 </span>
-                <span className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider -mt-1">
-                  Thi Thử Chuẩn Bộ GD&ĐT
+                <span className="block text-[10px] sm:text-[11px] font-bold text-brand-600 truncate -mt-0.5">
+                  Bắc Khánh Vĩnh, Khánh Hòa • Kỳ Thi THPT 2025
                 </span>
               </div>
             </Link>
