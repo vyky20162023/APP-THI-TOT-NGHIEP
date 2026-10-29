@@ -383,16 +383,30 @@ export default function ExamRoom() {
         <div className="w-16 h-16 bg-amber-100 text-amber-700 rounded-3xl flex items-center justify-center mx-auto mb-4">
           <AlertTriangle className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Chưa Tìm Thấy Câu Hỏi Của Đề Thi</h2>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">
+          {!user ? 'Yêu Cầu Đăng Nhập Để Vào Phòng Thi' : 'Chưa Tìm Thấy Câu Hỏi Của Đề Thi'}
+        </h2>
         <p className="text-sm text-slate-500 mb-6">
-          Đề thi này có thể chưa được cấu hình câu hỏi hoặc chưa được xuất bản. Vui lòng quay lại danh sách đề thi.
+          {!user 
+            ? 'Bạn cần đăng nhập tài khoản học sinh để hệ thống bấm giờ, tự động lưu bài làm và ghi nhận bảng vàng học bạ.' 
+            : 'Đề thi này có thể chưa được cấu hình câu hỏi hoặc chưa được xuất bản. Vui lòng quay lại danh sách đề thi.'}
         </p>
-        <button
-          onClick={() => navigate('/exams')}
-          className="px-5 py-2.5 bg-brand-600 text-white rounded-xl font-semibold text-sm"
-        >
-          Quay Lại Danh Sách
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {!user && (
+            <button
+              onClick={() => navigate('/login')}
+              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md shadow-brand-500/20 cursor-pointer"
+            >
+              Đăng Nhập Ngay
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/exams')}
+            className="px-5 py-2.5 bg-slate-200 text-slate-700 hover:bg-slate-300 rounded-xl font-bold text-sm cursor-pointer"
+          >
+            Quay Lại Danh Sách
+          </button>
+        </div>
       </div>
     );
   }

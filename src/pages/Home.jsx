@@ -9,13 +9,9 @@ import {
   ShieldCheck, 
   BarChart3, 
   ArrowRight, 
-  Sparkles,
-  Calculator,
-  Atom,
-  FlaskConical,
-  Languages,
-  Code
+  Sparkles
 } from 'lucide-react';
+import { THPT_SUBJECTS } from '../constants/subjects';
 
 export default function Home() {
   const [subjects, setSubjects] = useState([]);
@@ -174,27 +170,27 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {[
-            { name: 'Toán học', icon: Calculator, color: 'text-blue-600 bg-blue-50' },
-            { name: 'Vật lí', icon: Atom, color: 'text-indigo-600 bg-indigo-50' },
-            { name: 'Hóa học', icon: FlaskConical, color: 'text-emerald-600 bg-emerald-50' },
-            { name: 'Tiếng Anh', icon: Languages, color: 'text-amber-600 bg-amber-50' },
-            { name: 'Tin học', icon: Code, color: 'text-cyan-600 bg-cyan-50' },
-            { name: 'Ngữ văn', icon: BookOpen, color: 'text-rose-600 bg-rose-50' },
-          ].map((item, idx) => {
+          {THPT_SUBJECTS.map((item) => {
             const Icon = item.icon;
             return (
               <Link
-                key={idx}
+                key={item.id}
                 to={`/exams?subject=${encodeURIComponent(item.name)}`}
-                className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-brand-500 hover:shadow-md transition-all text-center group cursor-pointer"
+                className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-brand-500 hover:shadow-md transition-all text-center group cursor-pointer flex flex-col items-center justify-between"
               >
-                <div className={`w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${item.color}`}>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${item.color}`}>
                   <Icon className="w-6 h-6" />
                 </div>
-                <h4 className="font-bold text-slate-800 text-sm">{item.name}</h4>
-                <span className="text-[11px] font-medium text-slate-400 mt-1 block">
-                  Thi thử ngay →
+                <div>
+                  <h4 className="font-bold text-slate-800 text-sm group-hover:text-brand-600 transition-colors">
+                    {item.name}
+                  </h4>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mt-0.5">
+                    Mã: {item.code}
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-brand-600 mt-2 block group-hover:translate-x-0.5 transition-transform">
+                  Vào thi ngay →
                 </span>
               </Link>
             );

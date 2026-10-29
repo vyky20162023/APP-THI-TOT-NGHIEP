@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { THPT_SUBJECTS, getSubjectMeta } from '../../constants/subjects';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import EmptyState from '../../components/common/EmptyState';
 import { 
@@ -12,7 +13,8 @@ import {
   Trophy, 
   Filter,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  LayoutGrid
 } from 'lucide-react';
 
 export default function ExamList() {
@@ -20,7 +22,7 @@ export default function ExamList() {
   const subjectParam = searchParams.get('subject') || 'all';
 
   const [exams, setExams] = useState([]);
-  const [subjects, setSubjects] = useState([]);
+  const [subjects, setSubjects] = useState(THPT_SUBJECTS);
   const [selectedSubject, setSelectedSubject] = useState(subjectParam);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -28,27 +30,22 @@ export default function ExamList() {
   // Tải danh sách môn học và đề thi từ Supabase
   useEffect(() => {
     async function fetchData() {
-      if (!isSupabaseConfigured) {
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
 
-        // 1. Tải danh sách môn học
+        // 1. Tải danh sách môn học từ Supabase (nếu có cập nhật mới)
         const { data: subData, error: subError } = await supabase
           .from('subjects')
           .select('*')
           .eq('is_active', true)
           .order('name');
 
-        if (!subError && subData) {
+        if (!subError && subData && subData.length > 0) {
           setSubjects(subData);
         }
 
         // 2. Tải danh sách đề thi (kèm môn học và số câu)
-        let query = supabase
+        const { data: examData, error: examError } = await supabase
           .from('exams')
           .select(`
             *,
@@ -57,8 +54,6 @@ export default function ExamList() {
           `)
           .eq('is_published', true)
           .order('created_at', { ascending: false });
-
-        const { data: examData, error: examError } = await query;
 
         if (examError) {
           console.error('Lỗi khi tải đề thi:', examError);
@@ -160,31 +155,41 @@ export default function ExamList() {
               setSelectedSubject('all');
               setSearchParams({ subject: 'all' });
             }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
               selectedSubject === 'all'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            Tất cả môn
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>Tất cả môn ({exams.length})</span>
           </button>
 
-          {subjects.map((sub) => (
-            <button
-              key={sub.id}
-              onClick={() => {
-                setSelectedSubject(sub.name);
-                setSearchParams({ subject: sub.name });
-              }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                selectedSubject.toLowerCase() === sub.name.toLowerCase()
-                  ? 'bg-brand-600 text-white shadow-xs shadow-brand-500/20'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {sub.name}
-            </button>
-          ))}
+          {subjects.map((sub) => {
+            const meta = getSubjectMeta(sub.name || sub.code);
+            const Icon = meta.icon;
+            const isSelected =
+              selectedSubject.toLowerCase() === sub.name.toLowerCase() ||
+              selectedSubject.toLowerCase() === sub.code?.toLowerCase();
+
+            return (
+              <button
+                key={sub.id || sub.code}
+                onClick={() => {
+                  setSelectedSubject(sub.name);
+                  setSearchParams({ subject: sub.name });
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  isSelected
+                    ? 'bg-brand-600 text-white shadow-xs shadow-brand-500/20'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {Icon && <Icon className="w-3.5 h-3.5" />}
+                <span>{sub.name}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -194,7 +199,7 @@ export default function ExamList() {
       ) : filteredExams.length === 0 ? (
         <EmptyState
           title="Không tìm thấy đề thi phù hợp"
-          description="Hiện chưa có đề thi nào trong môn này hoặc từ khóa bạn vừa tìm kiếm. Hãy thử chọn môn học khác."
+          description={`Hiện chưa có đề thi nào trong môn "${selectedSubject}" hoặc từ khóa bạn vừa tìm kiếm. Hãy chọn môn học khác.`}
           actionLabel="Xem tất cả đề thi"
           onAction={() => {
             setSelectedSubject('all');
@@ -204,66 +209,72 @@ export default function ExamList() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredExams.map((exam) => (
-            <div
-              key={exam.id}
-              className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm hover:shadow-md hover:border-brand-400 transition-all flex flex-col justify-between group"
-            >
-              <div>
-                {/* Header Card: Tên môn + Điểm chuẩn */}
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-brand-50 text-brand-700 border border-brand-200">
-                    {exam.subjects?.name || 'Môn THPT'}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-400">
-                    Mã: {exam.subjects?.code || 'QG'}
-                  </span>
-                </div>
+          {filteredExams.map((exam) => {
+            const meta = getSubjectMeta(exam.subjects?.name || exam.subjects?.code);
+            const Icon = meta.icon;
 
-                {/* Tiêu đề đề thi */}
-                <h3 className="font-bold text-slate-900 text-base group-hover:text-brand-600 transition-colors line-clamp-2 mb-2">
-                  {exam.title}
-                </h3>
-
-                {/* Mô tả ngắn */}
-                <p className="text-xs text-slate-500 line-clamp-2 mb-5">
-                  {exam.description || 'Đề thi trắc nghiệm bám sát cấu trúc đề minh họa Bộ GD&ĐT 2025.'}
-                </p>
-              </div>
-
-              {/* Thông số & Nút vào thi */}
-              <div>
-                <div className="flex items-center gap-4 py-3 border-t border-slate-100 text-xs font-semibold text-slate-600 mb-4">
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-brand-600" />
-                    <span>{exam.duration_minutes} phút</span>
+            return (
+              <div
+                key={exam.id}
+                className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm hover:shadow-md hover:border-brand-400 transition-all flex flex-col justify-between group"
+              >
+                <div>
+                  {/* Header Card: Tên môn + Điểm chuẩn */}
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border ${meta.badgeColor}`}>
+                      {Icon && <Icon className="w-3.5 h-3.5" />}
+                      {exam.subjects?.name || meta.name}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-400">
+                      Mã: {exam.subjects?.code || meta.code}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <HelpCircle className="w-4 h-4 text-emerald-600" />
-                    <span>{exam.actualQuestionsCount} câu hỏi</span>
+
+                  {/* Tiêu đề đề thi */}
+                  <h3 className="font-bold text-slate-900 text-base group-hover:text-brand-600 transition-colors line-clamp-2 mb-2">
+                    {exam.title}
+                  </h3>
+
+                  {/* Mô tả ngắn */}
+                  <p className="text-xs text-slate-500 line-clamp-2 mb-5">
+                    {exam.description || 'Đề thi trắc nghiệm bám sát cấu trúc đề minh họa Bộ GD&ĐT 2025.'}
+                  </p>
+                </div>
+
+                {/* Thông số & Nút vào thi */}
+                <div>
+                  <div className="flex items-center gap-4 py-3 border-t border-slate-100 text-xs font-semibold text-slate-600 mb-4">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-brand-600" />
+                      <span>{exam.duration_minutes} phút</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <HelpCircle className="w-4 h-4 text-emerald-600" />
+                      <span>{exam.actualQuestionsCount} câu hỏi</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`/exam-room/${exam.id}`}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm text-center shadow-md shadow-brand-500/20 transition-all flex items-center justify-center gap-1.5 active:scale-98"
+                    >
+                      <span>Vào Thi Ngay</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+
+                    <Link
+                      to={`/exam-result/${exam.id}?view=leaderboard`}
+                      title="Xem Bảng Xếp Hạng"
+                      className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-amber-600 hover:bg-amber-50 hover:border-amber-200 transition-colors"
+                    >
+                      <Trophy className="w-4 h-4" />
+                    </Link>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <Link
-                    to={`/exam-room/${exam.id}`}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm text-center shadow-md shadow-brand-500/20 transition-all flex items-center justify-center gap-1.5 active:scale-98"
-                  >
-                    <span>Vào Thi Ngay</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-
-                  <Link
-                    to={`/exam-result/${exam.id}?view=leaderboard`}
-                    title="Xem Bảng Xếp Hạng"
-                    className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-amber-600 hover:bg-amber-50 hover:border-amber-200 transition-colors"
-                  >
-                    <Trophy className="w-4 h-4" />
-                  </Link>
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
