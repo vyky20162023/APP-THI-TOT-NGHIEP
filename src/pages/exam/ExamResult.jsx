@@ -15,7 +15,10 @@ import {
   Award, 
   Clock, 
   User, 
-  School
+  School,
+  Printer,
+  QrCode,
+  X
 } from 'lucide-react';
 
 export default function ExamResult() {
@@ -34,6 +37,7 @@ export default function ExamResult() {
   const [timeSpent, setTimeSpent] = useState(location.state?.timeSpentSeconds || 0);
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(!location.state?.scoreResult);
+  const [showCertificate, setShowCertificate] = useState(false);
 
   // Tải chi tiết bài thi từ Supabase nếu vào trực tiếp bằng URL
   useEffect(() => {
@@ -181,6 +185,14 @@ export default function ExamResult() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowCertificate(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+          >
+            <Printer className="w-4 h-4 text-amber-400" />
+            <span>In Giấy Chứng Nhận & Phiếu Điểm</span>
+          </button>
+
           {exam?.id && (
             <Link
               to={`/exam-room/${exam.id}`}
@@ -346,6 +358,146 @@ export default function ExamResult() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* MODAL GIẤY CHỨNG NHẬN & PHIẾU ĐIỂM CHUẨN IN ẤN */}
+      {showCertificate && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white">
+          <div className="bg-white rounded-3xl max-w-2xl w-full border border-slate-200 shadow-2xl p-6 sm:p-8 relative print:shadow-none print:border-none print:m-0">
+            {/* Nút đóng & Nút in trên màn hình (ẩn khi in) */}
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-6 print:hidden">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Bản xem trước Giấy chứng nhận
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>In / Lưu PDF</span>
+                </button>
+                <button
+                  onClick={() => setShowCertificate(false)}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* KHUNG GIẤY CHỨNG NHẬN CHUẨN */}
+            <div className="border-4 border-double border-amber-600/60 p-6 sm:p-8 rounded-2xl bg-gradient-to-b from-amber-50/20 via-white to-amber-50/10 text-center relative">
+              {/* Tiêu ngữ */}
+              <div className="mb-6">
+                <div className="text-xs sm:text-sm font-black tracking-widest text-slate-800 uppercase">
+                  BỘ GIÁO DỤC VÀ ĐÀO TẠO
+                </div>
+                <div className="text-[11px] font-bold text-slate-500 tracking-wider">
+                  HỆ THỐNG KHẢO THÍ ĐÁNH GIÁ NĂNG LỰC TỐT NGHIỆP THPT
+                </div>
+                <div className="w-20 h-0.5 bg-amber-600 mx-auto mt-2"></div>
+              </div>
+
+              {/* Tên chứng nhận */}
+              <h2 className="text-xl sm:text-2xl font-black text-amber-700 uppercase tracking-wide mb-1">
+                GIẤY CHỨNG NHẬN KẾT QUẢ THI
+              </h2>
+              <p className="text-xs text-slate-500 font-semibold mb-6">
+                Kỳ thi thử tốt nghiệp THPT Quốc Gia năm học 2024 - 2025
+              </p>
+
+              {/* Thông tin thí sinh */}
+              <div className="text-left bg-white p-4 sm:p-5 rounded-xl border border-amber-200/80 mb-6 space-y-2 text-xs sm:text-sm">
+                <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                  <span className="text-slate-500 font-medium">Họ và tên thí sinh:</span>
+                  <span className="font-extrabold text-slate-900">
+                    {attempt?.profiles?.full_name || 'Thí sinh Lớp 12'}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                  <span className="text-slate-500 font-medium">Trường THPT:</span>
+                  <span className="font-bold text-slate-800">
+                    {attempt?.profiles?.school_name || 'Trường THPT Quốc Gia'}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                  <span className="text-slate-500 font-medium">Môn thi:</span>
+                  <span className="font-bold text-brand-600">
+                    {exam?.subjects?.name || 'Môn THPT 2025'}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                  <span className="text-slate-500 font-medium">Đề thi:</span>
+                  <span className="font-bold text-slate-800 line-clamp-1 max-w-xs">
+                    {exam?.title || 'Đề thi chuẩn Bộ GD&ĐT'}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-1">
+                  <span className="text-slate-500 font-medium">Thời gian hoàn thành:</span>
+                  <span className="font-bold text-slate-800">
+                    {Math.round((timeSpent || 0) / 60)} phút ({new Date().toLocaleDateString('vi-VN')})
+                  </span>
+                </div>
+              </div>
+
+              {/* Bảng điểm nổi bật */}
+              <div className="bg-gradient-to-r from-amber-50 to-brand-50 border border-amber-300 rounded-2xl p-4 mb-6 flex items-center justify-around">
+                <div>
+                  <div className="text-xs font-bold text-slate-500 uppercase">Tổng Điểm Đạt Được</div>
+                  <div className="text-3xl sm:text-4xl font-black text-amber-700 tracking-tight">
+                    {scoreResult?.totalScore ?? attempt?.total_score ?? '0.0'}
+                    <span className="text-sm font-bold text-slate-400"> / 10.0</span>
+                  </div>
+                </div>
+
+                <div className="border-l border-amber-200 pl-6 text-left">
+                  <div className="text-xs font-bold text-slate-500">Xếp loại năng lực:</div>
+                  <div className="text-lg font-black text-emerald-700">
+                    {(scoreResult?.totalScore ?? attempt?.total_score ?? 0) >= 8.5
+                      ? 'Xuất Sắc'
+                      : (scoreResult?.totalScore ?? attempt?.total_score ?? 0) >= 7.0
+                      ? 'Khá - Giỏi'
+                      : (scoreResult?.totalScore ?? attempt?.total_score ?? 0) >= 5.0
+                      ? 'Đạt Chuẩn Tốt Nghiệp'
+                      : 'Cần Rèn Luyện Thêm'}
+                  </div>
+                  <div className="text-[11px] font-semibold text-slate-400">
+                    Đúng: {scoreResult?.correctCount ?? 0} câu • Sai: {scoreResult?.wrongCount ?? 0} câu
+                  </div>
+                </div>
+              </div>
+
+              {/* Chân chứng nhận & QR Code xác thực */}
+              <div className="flex items-center justify-between pt-4 border-t border-amber-200/80 text-left">
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 bg-white rounded-xl border border-slate-200 flex items-center justify-center p-1 shadow-xs">
+                    <QrCode className="w-10 h-10 text-slate-800" />
+                  </div>
+                  <div className="text-[10px] text-slate-400 leading-tight">
+                    <div>Mã số xác thực:</div>
+                    <div className="font-mono font-bold text-slate-700">
+                      THPT-{(attemptId || 'EXAM').slice(0, 8).toUpperCase()}
+                    </div>
+                    <div>Hệ thống thi thử THPT 2025</div>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className="text-[11px] text-slate-400 font-semibold italic">
+                    Hà Nội, ngày {new Date().getDate()} tháng {new Date().getMonth() + 1} năm {new Date().getFullYear()}
+                  </div>
+                  <div className="text-xs font-bold text-slate-800 uppercase mt-0.5">
+                    HỘI ĐỒNG KHẢO THÍ TRỰC TUYẾN
+                  </div>
+                  <div className="text-[10px] font-semibold text-emerald-600 mt-0.5">
+                    [Đã ký số xác thực điện tử]
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

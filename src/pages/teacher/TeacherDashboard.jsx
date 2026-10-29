@@ -11,15 +11,28 @@ import {
   FileSpreadsheet, 
   CheckCircle,
   Clock,
-  Filter
+  Filter,
+  Sparkles,
+  X
 } from 'lucide-react';
 
 export default function TeacherDashboard() {
   const [exams, setExams] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [selectedExamId, setSelectedExamId] = useState('all');
   const [attempts, setAttempts] = useState([]);
   const [hardestQuestions, setHardestQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // State sinh đề tự động theo ma trận
+  const [showMatrixModal, setShowMatrixModal] = useState(false);
+  const [matrixSubjectId, setMatrixSubjectId] = useState('');
+  const [matrixTitle, setMatrixTitle] = useState('Đề Thi Thử Tốt Nghiệp THPT 2025 - Sinh Ngẫu Nhiên');
+  const [matrixDuration, setMatrixDuration] = useState(50);
+  const [matrixCountD1, setMatrixCountD1] = useState(12); // Dạng 1: Nhiều lựa chọn
+  const [matrixCountD2, setMatrixCountD2] = useState(4);  // Dạng 2: Đúng / Sai
+  const [matrixCountD3, setMatrixCountD3] = useState(6);  // Dạng 3: Trả lời ngắn
+  const [generating, setGenerating] = useState(false);
 
   // 1. Tải danh sách đề thi mà giáo viên quản lý
   useEffect(() => {
@@ -29,6 +42,7 @@ export default function TeacherDashboard() {
         return;
       }
       try {
+        // Tải đề thi
         const { data, error } = await supabase
           .from('exams')
           .select('id, title, duration_minutes, subjects(name)')
@@ -40,12 +54,135 @@ export default function TeacherDashboard() {
             setSelectedExamId(data[0].id);
           }
         }
+
+        // Tải môn học
+        const { data: subData } = await supabase
+          .from('subjects')
+          .select('*')
+          .eq('is_active', true)
+          .order('name');
+        if (subData) {
+          setSubjects(subData);
+          if (subData.length > 0) setMatrixSubjectId(subData[0].id);
+        }
       } catch (err) {
-        console.error('Lỗi khi tải đề thi:', err);
+        console.error('Lỗi khi tải đề thi & môn học:', err);
       }
     }
     fetchExams();
   }, []);
+
+  // Xử lý sinh đề thi ngẫu nhiên theo ma trận Bộ GD&ĐT
+  const handleGenerateMatrixExam = async (e) => {
+    e.preventDefault();
+    if (!matrixSubjectId) {
+      alert('Vui lòng chọn môn học!');
+      return;
+    }
+
+    try {
+      setGenerating(true);
+
+      // 1. Tải toàn bộ câu hỏi của môn học này theo từng dạng
+      const { data: allQ, error: qErr } = await supabase
+        .from('questions')
+        .select('id, type, difficulty')
+        .eq('subject_id', matrixSubjectId);
+
+      if (qErr || !allQ || allQ.length === 0) {
+        alert('Môn học này hiện chưa có đủ câu hỏi trong ngân hàng để sinh đề!');
+        setGenerating(false);
+        return;
+      }
+
+      // Lọc câu hỏi theo từng dạng
+      const d1Questions = allQ.filter((q) => q.type === 'single_choice');
+      const d2Questions = allQ.filter((q) => q.type === 'true_false');
+      const d3Questions = allQ.filter((q) => q.type === 'short_answer');
+
+      // Hàm bốc ngẫu nhiên N phần tử
+      const pickRandom = (arr, n) => {
+        const shuffled = [...arr].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, Math.min(n, shuffled.length));
+      };
+
+      const selectedD1 = pickRandom(d1Questions, Number(matrixCountD1));
+      const selectedD2 = pickRandom(d2Questions, Number(matrixCountD2));
+      const selectedD3 = pickRandom(d3Questions, Number(matrixCountD3));
+
+      const totalPicked = selectedD1.length + selectedD2.length + selectedD3.length;
+      if (totalPicked === 0) {
+        alert('Không tìm thấy câu hỏi phù hợp với ma trận đã chọn.');
+        setGenerating(false);
+        return;
+      }
+
+      // 2. Tạo đề thi mới trong bảng exams
+      const { data: newExam, error: examInsertErr } = await supabase
+        .from('exams')
+        .insert({
+          subject_id: matrixSubjectId,
+          title: matrixTitle,
+          description: `Đề thi sinh ngẫu nhiên theo ma trận: ${selectedD1.length} câu Dạng 1, ${selectedD2.length} câu Dạng 2, ${selectedD3.length} câu Dạng 3.`,
+          duration_minutes: Number(matrixDuration),
+          total_questions: totalPicked,
+          is_published: true,
+        })
+        .select()
+        .single();
+
+      if (examInsertErr || !newExam) throw examInsertErr;
+
+      // 3. Ghép danh sách câu hỏi vào bảng exam_questions
+      const examQuestionsPayload = [];
+      let order = 1;
+
+      selectedD1.forEach((q) => {
+        examQuestionsPayload.push({
+          exam_id: newExam.id,
+          question_id: q.id,
+          order_index: order++,
+          point_weight: 0.25,
+        });
+      });
+
+      selectedD2.forEach((q) => {
+        examQuestionsPayload.push({
+          exam_id: newExam.id,
+          question_id: q.id,
+          order_index: order++,
+          point_weight: 1.00,
+        });
+      });
+
+      selectedD3.forEach((q) => {
+        examQuestionsPayload.push({
+          exam_id: newExam.id,
+          question_id: q.id,
+          order_index: order++,
+          point_weight: 0.50,
+        });
+      });
+
+      const { error: eqInsertErr } = await supabase
+        .from('exam_questions')
+        .insert(examQuestionsPayload);
+
+      if (eqInsertErr) throw eqInsertErr;
+
+      alert(`Đã sinh đề thi thành công với ${totalPicked} câu hỏi! Đề thi đã được xuất bản để học sinh vào làm.`);
+      setShowMatrixModal(false);
+
+      // Cập nhật lại danh sách đề thi
+      setExams((prev) => [newExam, ...prev]);
+      setSelectedExamId(newExam.id);
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi khi sinh đề thi: ' + (err.message || 'Thử lại sau'));
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   // 2. Tải số liệu thi thực tế theo đề được chọn
   useEffect(() => {
@@ -211,13 +348,23 @@ export default function TeacherDashboard() {
           </p>
         </div>
 
-        <button
-          onClick={handleExportExcel}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition-all cursor-pointer active:scale-95 self-start sm:self-auto"
-        >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>Xuất Báo Cáo Excel</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <button
+            onClick={() => setShowMatrixModal(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-brand-500/20 transition-all cursor-pointer active:scale-95"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>Sinh Đề Theo Ma Trận</span>
+          </button>
+
+          <button
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition-all cursor-pointer active:scale-95"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Xuất Báo Cáo Excel</span>
+          </button>
+        </div>
       </div>
 
       {/* Bộ chọn đề thi cần phân tích */}
@@ -378,6 +525,153 @@ export default function TeacherDashboard() {
             )}
           </div>
         </>
+      )}
+
+      {/* MODAL SINH ĐỀ THI TỰ ĐỘNG THEO MA TRẬN BỘ GD&ĐT */}
+      {showMatrixModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full border border-slate-200 shadow-2xl p-6 sm:p-8">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-brand-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">
+                    Sinh Đề Tự Động Theo Ma Trận
+                  </h3>
+                  <p className="text-xs text-slate-500">Chuẩn cấu trúc 3 phần trắc nghiệm Bộ GD&ĐT</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMatrixModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleGenerateMatrixExam} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Môn học áp dụng ma trận
+                </label>
+                <select
+                  value={matrixSubjectId}
+                  onChange={(e) => setMatrixSubjectId(e.target.value)}
+                  className="w-full py-2.5 px-3 rounded-xl border border-slate-300 text-sm font-semibold bg-white"
+                >
+                  {subjects.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name} ({sub.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Tên đề thi mới
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={matrixTitle}
+                  onChange={(e) => setMatrixTitle(e.target.value)}
+                  placeholder="Ví dụ: Đề Khảo Sát Năng Lực Toán 12 - Lần 1"
+                  className="w-full py-2.5 px-3.5 rounded-xl border border-slate-300 text-sm font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Thời gian làm bài (Phút)
+                </label>
+                <input
+                  type="number"
+                  min="5"
+                  max="180"
+                  required
+                  value={matrixDuration}
+                  onChange={(e) => setMatrixDuration(e.target.value)}
+                  className="w-full py-2.5 px-3.5 rounded-xl border border-slate-300 text-sm font-bold"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <span className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+                  Cấu hình số câu theo 3 dạng thức Bộ GD&ĐT:
+                </span>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-brand-50/60 p-3 rounded-xl border border-brand-200">
+                    <label className="block text-[11px] font-bold text-brand-800 mb-1">
+                      Phần I (Lựa chọn)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={matrixCountD1}
+                      onChange={(e) => setMatrixCountD1(e.target.value)}
+                      className="w-full py-1.5 px-2.5 bg-white rounded-lg border border-brand-300 text-xs font-black text-center"
+                    />
+                    <span className="text-[10px] text-slate-500 block text-center mt-1">
+                      (0.25đ / câu)
+                    </span>
+                  </div>
+
+                  <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-200">
+                    <label className="block text-[11px] font-bold text-emerald-800 mb-1">
+                      Phần II (Đúng/Sai)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={matrixCountD2}
+                      onChange={(e) => setMatrixCountD2(e.target.value)}
+                      className="w-full py-1.5 px-2.5 bg-white rounded-lg border border-emerald-300 text-xs font-black text-center"
+                    />
+                    <span className="text-[10px] text-slate-500 block text-center mt-1">
+                      (Bậc thang 1đ)
+                    </span>
+                  </div>
+
+                  <div className="bg-amber-50/60 p-3 rounded-xl border border-amber-200">
+                    <label className="block text-[11px] font-bold text-amber-800 mb-1">
+                      Phần III (Điền số)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={matrixCountD3}
+                      onChange={(e) => setMatrixCountD3(e.target.value)}
+                      className="w-full py-1.5 px-2.5 bg-white rounded-lg border border-amber-300 text-xs font-black text-center"
+                    />
+                    <span className="text-[10px] text-slate-500 block text-center mt-1">
+                      (0.5đ / câu)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowMatrixModal(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={generating}
+                  className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md shadow-brand-500/20 active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {generating ? 'Đang bốc câu hỏi & tạo đề...' : 'Tạo Đề Thi Ngay'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

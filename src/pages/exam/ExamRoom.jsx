@@ -7,6 +7,7 @@ import QuestionPalette from '../../components/exam/QuestionPalette';
 import QuestionCard from '../../components/exam/QuestionCard';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import { calculateExamScore } from '../../utils/scoring';
+import { soundEffects } from '../../utils/audio';
 import confetti from 'canvas-confetti';
 import { 
   ShieldAlert, 
@@ -190,6 +191,7 @@ export default function ExamRoom() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        soundEffects.playViolationSiren();
         setViolationCount((prev) => {
           const updated = prev + 1;
           setShowViolationAlert(true);
@@ -295,30 +297,41 @@ export default function ExamRoom() {
       const scoreResult = calculateExamScore(questions, answers);
 
       if (attemptId && isSupabaseConfigured) {
-        // Cập nhật lượt thi thành completed
-        await supabase
-          .from('exam_attempts')
-          .update({
-            status: 'completed',
-            submitted_at: new Date().toISOString(),
-            time_spent_seconds: timeSpentSeconds,
-            total_score: scoreResult.totalScore,
-            violation_count: violationCount,
-          })
-          .eq('id', attemptId);
+        // Ưu tiên nộp qua Stored Procedure bảo mật trên Supabase
+        const { data: rpcData, error: rpcError } = await supabase.rpc('submit_exam_attempt', {
+          p_attempt_id: attemptId,
+          p_student_answers: answers,
+          p_time_spent: timeSpentSeconds,
+          p_violations: violationCount,
+        });
 
-        // Lưu toàn bộ chi tiết điểm từng câu vào exam_answers
-        for (const item of scoreResult.gradedResults) {
+        if (rpcError) {
+          console.warn('RPC chưa được kích hoạt, chuyển sang chế độ cập nhật bảng trực tiếp:', rpcError);
+          // Cập nhật lượt thi thành completed
           await supabase
-            .from('exam_answers')
-            .upsert({
-              attempt_id: attemptId,
-              question_id: item.questionId,
-              student_answer: item.studentAnswer || null,
-              is_correct: item.isCorrect,
-              earned_score: item.earnedScore,
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'attempt_id,question_id' });
+            .from('exam_attempts')
+            .update({
+              status: 'completed',
+              submitted_at: new Date().toISOString(),
+              time_spent_seconds: timeSpentSeconds,
+              total_score: scoreResult.totalScore,
+              violation_count: violationCount,
+            })
+            .eq('id', attemptId);
+
+          // Lưu toàn bộ chi tiết điểm từng câu vào exam_answers
+          for (const item of scoreResult.gradedResults) {
+            await supabase
+              .from('exam_answers')
+              .upsert({
+                attempt_id: attemptId,
+                question_id: item.questionId,
+                student_answer: item.studentAnswer || null,
+                is_correct: item.isCorrect,
+                earned_score: item.earnedScore,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'attempt_id,question_id' });
+          }
         }
       }
 
@@ -327,7 +340,8 @@ export default function ExamRoom() {
         localStorage.removeItem(storageKey);
       } catch (e) {}
 
-      // Bắn pháo hoa ăn mừng nộp bài
+      // Bắn pháo hoa & phát âm thanh ăn mừng nộp bài
+      soundEffects.playSuccessChime();
       confetti({
         particleCount: 100,
         spread: 70,

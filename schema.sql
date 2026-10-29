@@ -429,3 +429,111 @@ INSERT INTO public.exam_questions (exam_id, question_id, order_index, point_weig
 ('e1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000006', 6, 0.50),
 ('e1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000007', 7, 0.50)
 ON CONFLICT (exam_id, question_id) DO NOTHING;
+
+-- ==============================================================================
+-- 13. STORED PROCEDURE CHẤM ĐIỂM SERVER-SIDE BẢO MẬT TUYỆT ĐỐI (ANTI-CHEAT)
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.submit_exam_attempt(
+    p_attempt_id UUID,
+    p_student_answers JSONB,
+    p_time_spent INTEGER DEFAULT 0,
+    p_violations INTEGER DEFAULT 0
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_exam_id UUID;
+    v_total_score NUMERIC := 0.0;
+    v_q RECORD;
+    v_student_ans JSONB;
+    v_earned NUMERIC;
+    v_is_correct BOOLEAN;
+    v_correct_count INTEGER;
+BEGIN
+    -- Lấy thông tin lượt thi
+    SELECT exam_id INTO v_exam_id
+    FROM public.exam_attempts
+    WHERE id = p_attempt_id AND student_id = auth.uid();
+
+    IF v_exam_id IS NULL THEN
+        RAISE EXCEPTION 'Không tìm thấy lượt thi hoặc không có quyền thao tác trên lượt thi này';
+    END IF;
+
+    -- Lặp qua từng câu hỏi trong đề thi
+    FOR v_q IN
+        SELECT eq.question_id, eq.point_weight, q.type, q.correct_answer
+        FROM public.exam_questions eq
+        JOIN public.questions q ON eq.question_id = q.id
+        WHERE eq.exam_id = v_exam_id
+    LOOP
+        v_student_ans := p_student_answers -> (v_q.question_id::text);
+        v_earned := 0.0;
+        v_is_correct := false;
+
+        IF v_student_ans IS NOT NULL THEN
+            -- DẠNG 1: Nhiều lựa chọn
+            IF v_q.type = 'single_choice' THEN
+                IF upper(trim(COALESCE(v_student_ans->>'answer', v_student_ans::text, ''))) =
+                   upper(trim(COALESCE(v_q.correct_answer->>'answer', v_q.correct_answer::text, ''))) THEN
+                    v_earned := v_q.point_weight;
+                    v_is_correct := true;
+                END IF;
+
+            -- DẠNG 2: Đúng / Sai bậc thang
+            ELSIF v_q.type = 'true_false' THEN
+                v_correct_count := 0;
+                IF (v_student_ans->>'a')::boolean IS NOT DISTINCT FROM (v_q.correct_answer->>'a')::boolean THEN
+                    v_correct_count := v_correct_count + 1;
+                END IF;
+                IF (v_student_ans->>'b')::boolean IS NOT DISTINCT FROM (v_q.correct_answer->>'b')::boolean THEN
+                    v_correct_count := v_correct_count + 1;
+                END IF;
+                IF (v_student_ans->>'c')::boolean IS NOT DISTINCT FROM (v_q.correct_answer->>'c')::boolean THEN
+                    v_correct_count := v_correct_count + 1;
+                END IF;
+                IF (v_student_ans->>'d')::boolean IS NOT DISTINCT FROM (v_q.correct_answer->>'d')::boolean THEN
+                    v_correct_count := v_correct_count + 1;
+                END IF;
+
+                IF v_correct_count = 1 THEN v_earned := 0.10 * (v_q.point_weight / 1.0);
+                ELSIF v_correct_count = 2 THEN v_earned := 0.25 * (v_q.point_weight / 1.0);
+                ELSIF v_correct_count = 3 THEN v_earned := 0.50 * (v_q.point_weight / 1.0);
+                ELSIF v_correct_count = 4 THEN
+                    v_earned := 1.00 * (v_q.point_weight / 1.0);
+                    v_is_correct := true;
+                END IF;
+
+            -- DẠNG 3: Trả lời ngắn
+            ELSIF v_q.type = 'short_answer' THEN
+                IF lower(trim(replace(COALESCE(v_student_ans->>'value', v_student_ans::text, ''), ',', '.'))) =
+                   lower(trim(replace(COALESCE(v_q.correct_answer->>'value', v_q.correct_answer::text, ''), ',', '.'))) THEN
+                    v_earned := v_q.point_weight;
+                    v_is_correct := true;
+                END IF;
+            END IF;
+        END IF;
+
+        -- Lưu kết quả từng câu vào exam_answers
+        INSERT INTO public.exam_answers (attempt_id, question_id, student_answer, is_correct, earned_score, updated_at)
+        VALUES (p_attempt_id, v_q.question_id, v_student_ans, v_is_correct, round(v_earned, 2), NOW())
+        ON CONFLICT (attempt_id, question_id) DO UPDATE SET
+            student_answer = EXCLUDED.student_answer,
+            is_correct = EXCLUDED.is_correct,
+            earned_score = EXCLUDED.earned_score,
+            updated_at = NOW();
+
+        v_total_score := v_total_score + v_earned;
+    END LOOP;
+
+    -- Cập nhật lượt thi thành completed
+    UPDATE public.exam_attempts
+    SET status = 'completed',
+        submitted_at = NOW(),
+        time_spent_seconds = p_time_spent,
+        violation_count = p_violations,
+        total_score = round(v_total_score, 2)
+    WHERE id = p_attempt_id;
+
+    RETURN jsonb_build_object('success', true, 'total_score', round(v_total_score, 2));
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
