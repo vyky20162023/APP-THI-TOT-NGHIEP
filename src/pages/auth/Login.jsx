@@ -21,7 +21,22 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await signIn(email, password);
+      const data = await signIn(email, password);
+      
+      // Nếu là giáo viên hoặc admin, tự động chuyển vào Báo cáo Phổ điểm & Quản trị
+      if (from === '/' && data?.user) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (prof?.role === 'teacher' || prof?.role === 'admin') {
+          navigate('/teacher-dashboard', { replace: true });
+          return;
+        }
+      }
+
       navigate(from, { replace: true });
     } catch (err) {
       console.error(err);
@@ -119,8 +134,39 @@ export default function Login() {
           </button>
         </form>
 
+        {/* Hộp tiện ích đăng nhập nhanh dành cho Giáo viên / Quản trị */}
+        <div className="mt-5 p-3.5 bg-slate-50 border border-slate-200/90 rounded-2xl">
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+            <span>Tài khoản Khảo thí & Quản trị</span>
+            <span className="text-[10px] text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full font-bold border border-brand-200">Bấm để điền</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('bbnttn@gmail.com');
+              }}
+              className="p-2.5 bg-white rounded-xl border border-slate-200 text-left hover:border-brand-500 hover:shadow-xs transition-all cursor-pointer"
+            >
+              <div className="font-bold text-slate-800">🛡️ Quản trị viên</div>
+              <div className="text-[10px] text-slate-500 font-mono truncate">bbnttn@gmail.com</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('giaovien@nguyenthaibinh.edu.vn');
+                setPassword('Giaovien@2025');
+              }}
+              className="p-2.5 bg-white rounded-xl border border-emerald-200 text-left hover:border-emerald-500 hover:shadow-xs transition-all cursor-pointer bg-emerald-50/20"
+            >
+              <div className="font-bold text-emerald-800">👨‍🏫 Giáo viên bộ môn</div>
+              <div className="text-[10px] text-emerald-600 font-mono truncate">Pass: Giaovien@2025</div>
+            </button>
+          </div>
+        </div>
+
         {/* Footer */}
-        <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+        <div className="mt-5 pt-4 border-t border-slate-100 text-center">
           <p className="text-xs text-slate-500">
             Chưa có tài khoản thí sinh / giáo viên?{' '}
             <Link to="/register" className="font-bold text-brand-600 hover:text-brand-700 underline">
