@@ -27,6 +27,10 @@ export default function Login() {
       console.error(err);
       if (err.message.includes('Invalid login credentials')) {
         setErrorMsg('Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!');
+      } else if (err.message.includes('Email not confirmed')) {
+        setErrorMsg('Email chưa được kích hoạt. Tài khoản của Thầy/Cô đã được kích hoạt trực tiếp trên hệ thống, vui lòng bấm nút "Đăng Nhập" lại ngay bây giờ!');
+      } else if (err.message.includes('rate limit')) {
+        setErrorMsg('Quá nhiều lần thử đăng nhập. Vui lòng đợi trong giây lát và thử lại.');
       } else {
         setErrorMsg(err.message || 'Đăng nhập không thành công. Vui lòng thử lại sau.');
       }
