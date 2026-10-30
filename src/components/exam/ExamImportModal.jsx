@@ -85,7 +85,13 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
       }
 
       setParsedQuestions(questions);
-      soundEffects.playClick();
+      try {
+        if (soundEffects && typeof soundEffects.playClick === 'function') {
+          soundEffects.playClick();
+        }
+      } catch (soundErr) {
+        // Bỏ qua lỗi âm thanh nếu trình duyệt chưa cấp quyền AudioContext
+      }
     } catch (err) {
       console.error('Lỗi parse file:', err);
       setParseError(err.message || 'Không thể đọc nội dung file.');
@@ -112,7 +118,11 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
       }
 
       setParsedQuestions(questions);
-      soundEffects.playClick();
+      try {
+        if (soundEffects && typeof soundEffects.playClick === 'function') {
+          soundEffects.playClick();
+        }
+      } catch (soundErr) {}
     } catch (err) {
       console.error(err);
       setParseError(err.message);
@@ -204,12 +214,19 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
       }
 
       // 3. Thông báo thành công và hiệu ứng chúc mừng
-      soundEffects.playSuccessChime();
-      confetti({
-        particleCount: 120,
-        spread: 80,
-        origin: { y: 0.6 },
-      });
+      try {
+        if (soundEffects && typeof soundEffects.playSuccessChime === 'function') {
+          soundEffects.playSuccessChime();
+        }
+      } catch (soundErr) {}
+
+      try {
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.6 },
+        });
+      } catch (confettiErr) {}
 
       alert(`✅ Đã tải lên và tạo thành công đề thi "${newExam.title}" với ${parsedQuestions.length} câu hỏi!`);
 
