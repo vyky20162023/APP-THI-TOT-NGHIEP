@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import EmptyState from '../../components/common/EmptyState';
+import ExamImportModal from '../../components/exam/ExamImportModal';
 import * as XLSX from 'xlsx';
 import { 
   BarChart3, 
@@ -13,6 +14,7 @@ import {
   Clock,
   Filter,
   Sparkles,
+  UploadCloud,
   X
 } from 'lucide-react';
 
@@ -23,6 +25,9 @@ export default function TeacherDashboard() {
   const [attempts, setAttempts] = useState([]);
   const [hardestQuestions, setHardestQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // State Modal tải lên đề thi từ file
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // State sinh đề tự động theo ma trận
   const [showMatrixModal, setShowMatrixModal] = useState(false);
@@ -350,6 +355,14 @@ export default function TeacherDashboard() {
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <button
+            onClick={() => setShowImportModal(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition-all cursor-pointer active:scale-95"
+          >
+            <UploadCloud className="w-4 h-4 text-emerald-200" />
+            <span>Tải Lên Đề Thi (Excel / Word / PDF)</span>
+          </button>
+
+          <button
             onClick={() => setShowMatrixModal(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-brand-500/20 transition-all cursor-pointer active:scale-95"
           >
@@ -359,9 +372,9 @@ export default function TeacherDashboard() {
 
           <button
             onClick={handleExportExcel}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition-all cursor-pointer active:scale-95"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 hover:border-slate-400 bg-white text-slate-700 font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer active:scale-95"
           >
-            <FileSpreadsheet className="w-4 h-4" />
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             <span>Xuất Báo Cáo Excel</span>
           </button>
         </div>
@@ -673,6 +686,18 @@ export default function TeacherDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal Tải Lên Đề Thi Từ File (Excel, Word, PDF) */}
+      <ExamImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={(newExam) => {
+          setExams((prev) => [newExam, ...prev]);
+          if (newExam?.id) {
+            setSelectedExamId(newExam.id);
+          }
+        }}
+      />
     </div>
   );
 }

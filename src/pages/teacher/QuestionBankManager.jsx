@@ -16,8 +16,10 @@ import {
   Eye, 
   Sparkles,
   Layers,
-  Image as ImageIcon
+  Image as ImageIcon,
+  UploadCloud
 } from 'lucide-react';
+import ExamImportModal from '../../components/exam/ExamImportModal';
 
 export default function QuestionBankManager() {
   const { user } = useAuth();
@@ -30,6 +32,7 @@ export default function QuestionBankManager() {
 
   // Modal tạo câu hỏi
   const [showModal, setShowModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Form state
@@ -211,13 +214,24 @@ export default function QuestionBankManager() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-brand-500/20 transition-all cursor-pointer active:scale-95 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Thêm Câu Hỏi Mới</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer active:scale-95"
+            title="Tải lên đề thi hoặc ngân hàng câu hỏi từ file Excel, Word, PDF hoặc văn bản"
+          >
+            <UploadCloud className="w-4 h-4 text-indigo-600" />
+            <span>Tải Lên File (Excel/Word/PDF)</span>
+          </button>
+
+          <button
+            onClick={() => setShowModal(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-brand-500/20 transition-all cursor-pointer active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm Câu Hỏi Mới</span>
+          </button>
+        </div>
       </div>
 
       {/* Bộ Lọc & Tìm Kiếm */}
@@ -563,6 +577,15 @@ export default function QuestionBankManager() {
           </div>
         </div>
       )}
+
+      {/* Modal Tải Lên Đề Thi / Ngân Hàng Câu Hỏi Từ File */}
+      <ExamImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={() => {
+          fetchData();
+        }}
+      />
     </div>
   );
 }
