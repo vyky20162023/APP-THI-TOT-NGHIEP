@@ -224,10 +224,104 @@ export async function parsePdfExam(file) {
 }
 
 /**
- * 4. Trình phân tích văn bản thô thông minh (Smart Regex Parser Engine)
+ * 4. Tự động nhận diện môn học dựa trên từ khóa trong văn bản hoặc tên file
+ */
+export function detectSubjectFromText(text = '', filename = '') {
+  const combined = (filename + ' ' + text).toLowerCase();
+
+  const subjectKeywords = [
+    {
+      id: 'b1000000-0000-0000-0000-000000000009',
+      name: 'Giáo dục Kinh tế & Pháp luật',
+      code: 'CIV',
+      keywords: ['kinh tế', 'pháp luật', 'doanh nghiệp', 'thuế', 'hiến pháp', 'công dân', 'tài sản', 'thu nhập', 'gdktpl', 'civ', 'tiết kiệm', 'hợp đồng', 'chính sách xã hội', 'chị h', 'bán xe', 'hội nhập kinh tế', 'lao động', 'vi phạm pháp luật']
+    },
+    {
+      id: 'b1000000-0000-0000-0000-000000000001',
+      name: 'Toán học',
+      code: 'MATH',
+      keywords: ['toán', 'hàm số', 'tích phân', 'nguyên hàm', 'đạo hàm', 'hình học', 'mặt phẳng', 'mặt cầu', 'toạ độ', 'vectơ', 'logarit', 'math', 'cực trị', 'tiệm cận', 'đồng biến', 'nghịch biến']
+    },
+    {
+      id: 'b1000000-0000-0000-0000-000000000003',
+      name: 'Tiếng Anh',
+      code: 'ENG',
+      keywords: ['english', 'tiếng anh', 'choose the', 'pronunciation', 'stress', 'closest in meaning', 'opposite in meaning', 'passage', 'grammar', 'read the following', 'sentence']
+    },
+    {
+      id: 'b1000000-0000-0000-0000-000000000002',
+      name: 'Ngữ văn',
+      code: 'LIT',
+      keywords: ['ngữ văn', 'văn học', 'đoạn trích', 'tác giả', 'tác phẩm', 'nhà thơ', 'thơ', 'đọc hiểu văn bản', 'nghị luận', 'nhân vật']
+    },
+    {
+      id: 'b1000000-0000-0000-0000-000000000004',
+      name: 'Vật lí',
+      code: 'PHYS',
+      keywords: ['vật lí', 'vật lý', 'dao động', 'sóng cơ', 'từ trường', 'nhiệt độ', 'khí lý tưởng', 'hạt nhân', 'electron', 'điện trường', 'con lắc', 'chu kì', 'tần số']
+    },
+    {
+      id: 'b1000000-0000-0000-0000-000000000005',
+      name: 'Hóa học',
+      code: 'CHEM',
+      keywords: ['hóa học', 'este', 'ancol', 'axit', 'glucozơ', 'kim loại', 'phản ứng', 'dung dịch', 'phức chất', 'mol', 'peptit', 'amin', 'chất béo']
+    },
+    {
+      id: 'b1000000-0000-0000-0000-000000000006',
+      name: 'Sinh học',
+      code: 'BIO',
+      keywords: ['sinh học', 'gen', 'adn', 'arn', 'nhiễm sắc thể', 'đột biến', 'tế bào', 'quần thể', 'sinh thái', 'di truyền', 'alen', 'mARN', 'tARN']
+    },
+    {
+      id: 'b1000000-0000-0000-0000-000000000007',
+      name: 'Lịch sử',
+      code: 'HIST',
+      keywords: ['lịch sử', 'chiến dịch', 'cách mạng', 'kháng chiến', 'hiệp định', 'thực dân', 'đế quốc', 'năm 19', 'đảng cộng sản', 'quân đội']
+    },
+    {
+      id: 'b1000000-0000-0000-0000-000000000008',
+      name: 'Địa lí',
+      code: 'GEO',
+      keywords: ['địa lí', 'địa lý', 'biển đông', 'vùng kinh tế', 'đồng bằng', 'khí hậu', 'đô thị hóa', 'cơ cấu kinh tế', 'dân số', 'khoáng sản']
+    },
+    {
+      id: 'b1000000-0000-0000-0000-000000000010',
+      name: 'Tin học',
+      code: 'CS',
+      keywords: ['tin học', 'lập trình', 'python', 'thuật toán', 'cơ sở dữ liệu', 'sql', 'mạng máy tính', 'trí tuệ nhân tạo', 'biến', 'mảng', 'hàm']
+    },
+    {
+      id: 'b1000000-0000-0000-0000-000000000011',
+      name: 'Công nghệ',
+      code: 'TECH',
+      keywords: ['công nghệ', 'mạch điện', 'cảm biến', 'trồng trọt', 'chăn nuôi', 'nông nghiệp', 'linh kiện', 'điện tử']
+    }
+  ];
+
+  let bestMatch = null;
+  let maxScore = 0;
+
+  for (const s of subjectKeywords) {
+    let score = 0;
+    for (const kw of s.keywords) {
+      if (combined.includes(kw)) {
+        score++;
+      }
+    }
+    if (score > maxScore) {
+      maxScore = score;
+      bestMatch = s;
+    }
+  }
+
+  return bestMatch;
+}
+
+/**
+ * 5. Trình phân tích văn bản thô thông minh (Smart Regex Parser Engine)
  * Bóc tách tự động:
- * - Dạng 1: A. B. C. D.
- * - Dạng 2: a) b) c) d)
+ * - Dạng 1: Nhiều lựa chọn (A, B, C, D) - Hỗ trợ cả xuống dòng và cùng 1 dòng
+ * - Dạng 2: Đúng / Sai 4 ý (a, b, c, d)
  * - Dạng 3: Trả lời ngắn
  * - KaTeX: $...$
  */
@@ -237,8 +331,8 @@ export function parseRawTextExam(text) {
   // Chuẩn hóa ngắt dòng
   const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // Tìm các vị trí bắt đầu câu hỏi: "Câu 1:", "Câu 1.", "Bài 1:", "1."
-  const questionPattern = /(?:^|\n)(?:Câu|Bài|\d+)[\s.]*(\d+)[\s.:-]+\s*/gi;
+  // Tìm các vị trí bắt đầu câu hỏi: "Câu 1:", "Câu 1.", "Bài 1:", "Question 1:", "1."
+  const questionPattern = /(?:^|\n)\s*(?:Câu|Bài|Question|\d+)[\s.]*(\d+)[\s.:-]+\s*/gi;
   
   const matches = [];
   let match;
@@ -279,9 +373,9 @@ export function parseRawTextExam(text) {
         contentBlock = block.substring(0, expMatch.index).trim();
       }
 
-      // 2. Tìm đáp án khai báo ở cuối câu: "Đáp án: A", "Đáp án: a-Đ, b-S...", "Đáp án: 4"
+      // 2. Tìm đáp án khai báo ở cuối câu: "Đáp án: A", "Đáp án: C", "Key: B", "Ans: D"
       let correctAnsStr = '';
-      const ansMatch = contentBlock.match(/(?:Đáp án|Đáp án đúng|Key|Ans)[:\s]*([^\n]+)/i);
+      const ansMatch = contentBlock.match(/(?:Đáp án|Đáp án đúng|Key|Ans|Đ\/a)[:\s]*([^\n]+)/i);
       if (ansMatch) {
         correctAnsStr = ansMatch[1].trim();
         contentBlock = contentBlock.substring(0, ansMatch.index).trim();
@@ -295,14 +389,97 @@ export function parseRawTextExam(text) {
         contentBlock = contentBlock.replace(diffMatch[0], '').trim();
       }
 
-      // 4. Phân loại dạng thức:
-      // A. KIỂM TRA DẠNG 2: Đúng / Sai 4 ý (a, b, c, d)
-      const tfRegex = /(?:^|\n)\s*([a-d])[\)\.]\s*([\s\S]*?)(?=(?:\n\s*[a-d][\)\.]|$))/gi;
+      // =========================================================================
+      // 4. ƯU TIÊN 1: KIỂM TRA DẠNG 1 - NHIỀU LỰA CHỌN (A, B, C, D VIẾT HOA)
+      // Hỗ trợ phương án nằm trên các dòng riêng HOẶC nằm trên cùng 1 dòng
+      // =========================================================================
+      const choiceDelimRegex = /(?:^|\n|\t|\s{2,}|\.\s+|;\s+)([*#]?\s*([A-D])[\.\)])\s*/g;
+      const choicePositions = [];
+      let cMatch;
+
+      while ((cMatch = choiceDelimRegex.exec(contentBlock)) !== null) {
+        const fullMatch = cMatch[0];
+        const letter = cMatch[2]; // 'A', 'B', 'C', 'D'
+        const hasStar = fullMatch.includes('*') || fullMatch.includes('#');
+        // Vị trí bắt đầu token
+        const tokenStart = cMatch.index + (fullMatch.length - cMatch[1].length);
+        const textStart = cMatch.index + fullMatch.length;
+
+        choicePositions.push({
+          letter,
+          tokenStart,
+          textStart,
+          hasStar
+        });
+      }
+
+      // Lọc các vị trí A, B, C, D đảm bảo theo đúng thứ tự A -> B -> C -> D
+      const validLetters = ['A', 'B', 'C', 'D'];
+      let filteredPositions = [];
+      let expectedIdx = 0;
+
+      for (const pos of choicePositions) {
+        if (pos.letter === validLetters[expectedIdx]) {
+          filteredPositions.push(pos);
+          expectedIdx++;
+          if (expectedIdx >= validLetters.length) break;
+        }
+      }
+
+      // Nếu tìm được ít nhất 3 phương án A, B, C (thường là đủ 4 A, B, C, D)
+      if (filteredPositions.length >= 3) {
+        const questionPrompt = contentBlock.substring(0, filteredPositions[0].tokenStart).trim();
+        const options = [];
+        let chosenCorrect = 'A';
+
+        for (let i = 0; i < filteredPositions.length; i++) {
+          const cur = filteredPositions[i];
+          const next = filteredPositions[i + 1];
+          const optEnd = next ? next.tokenStart : contentBlock.length;
+          let optText = contentBlock.substring(cur.textStart, optEnd).trim();
+
+          // Xóa dấu chấm hoặc dấu phẩy thừa ở cuối nếu có
+          optText = optText.replace(/[\s\t\r\n]+$/, '');
+
+          if (cur.hasStar || optText.startsWith('*')) {
+            chosenCorrect = cur.letter;
+            optText = optText.replace(/^\*\s*/, '');
+          }
+
+          options.push({
+            id: cur.letter,
+            text: optText
+          });
+        }
+
+        // Bổ sung đáp án nếu có dòng "Đáp án: [A-D]"
+        if (correctAnsStr) {
+          const directLetter = correctAnsStr.match(/[A-D]/);
+          if (directLetter) chosenCorrect = directLetter[0];
+        }
+
+        parsedQuestions.push({
+          id: `import_q_${Date.now()}_${idx}`,
+          type: 'single_choice',
+          content: questionPrompt || contentBlock,
+          options,
+          correct_answer: { answer: chosenCorrect },
+          explanation,
+          difficulty,
+          point_weight: 0.25
+        });
+        return;
+      }
+
+      // =========================================================================
+      // 5. ƯU TIÊN 2: KIỂM TRA DẠNG 2 - ĐÚNG / SAI 4 Ý (a, b, c, d CHỮ THƯỜNG)
+      // TUYỆT ĐỐI dùng cờ case-sensitive /g (KHÔNG dùng /i để không bắt nhầm A, B, C, D)
+      // =========================================================================
+      const tfRegex = /(?:^|\n)\s*([a-d])[\)\.]\s*([\s\S]*?)(?=(?:\n\s*[a-d][\)\.]|$))/g;
       const tfMatches = [...contentBlock.matchAll(tfRegex)];
 
       if (tfMatches.length >= 3) {
-        // Lấy phần đề bài trước ý a)
-        const firstTfIndex = contentBlock.search(/(?:^|\n)\s*[a-d][\)\.]/i);
+        const firstTfIndex = contentBlock.search(/(?:^|\n)\s*[a-d][\)\.]/);
         const questionPrompt = firstTfIndex > 0 ? contentBlock.substring(0, firstTfIndex).trim() : 'Xét tính đúng/sai của các mệnh đề sau:';
 
         const tfOptions = [];
@@ -312,7 +489,6 @@ export function parseRawTextExam(text) {
           const id = m[1].toLowerCase();
           let optText = m[2].trim();
 
-          // Kiểm tra xem trong nội dung ý có đính kèm (Đúng), (Sai), (Đ), (S) không
           let isTrue = true;
           if (/\((?:S|Sai|False|F)\)\s*$/i.test(optText)) {
             isTrue = false;
@@ -326,7 +502,6 @@ export function parseRawTextExam(text) {
           tfCorrect[id] = isTrue;
         });
 
-        // Nếu có dòng "Đáp án: a-Đ, b-S, c-Đ, d-Đ"
         if (correctAnsStr) {
           const pairs = correctAnsStr.split(/[,;\s]+/);
           pairs.forEach((p) => {
@@ -340,7 +515,7 @@ export function parseRawTextExam(text) {
         }
 
         parsedQuestions.push({
-          id: `raw_q_${Date.now()}_${idx}`,
+          id: `import_q_${Date.now()}_${idx}`,
           type: 'true_false',
           content: questionPrompt,
           options: tfOptions,
@@ -352,53 +527,12 @@ export function parseRawTextExam(text) {
         return;
       }
 
-      // B. KIỂM TRA DẠNG 1: Nhiều lựa chọn (A, B, C, D)
-      const choiceRegex = /(?:^|\n)\s*([A-D])[\.\)]\s*([\s\S]*?)(?=(?:\n\s*[A-D][\.\)]|$))/g;
-      const choiceMatches = [...contentBlock.matchAll(choiceRegex)];
-
-      if (choiceMatches.length >= 3) {
-        // Lấy nội dung câu hỏi trước phương án A
-        const firstChoiceIndex = contentBlock.search(/(?:^|\n)\s*[A-D][\.\)]/);
-        const questionPrompt = firstChoiceIndex > 0 ? contentBlock.substring(0, firstChoiceIndex).trim() : contentBlock;
-
-        const options = [];
-        let chosenCorrect = 'A';
-
-        choiceMatches.forEach((m) => {
-          const optLetter = m[1].toUpperCase();
-          let optText = m[2].trim();
-
-          // Kiểm tra xem phương án có đánh dấu sao (*) là đáp án đúng không (ví dụ "*A. 12")
-          if (optText.startsWith('*') || m[0].includes('*')) {
-            chosenCorrect = optLetter;
-            optText = optText.replace(/^\*\s*/, '');
-          }
-
-          options.push({ id: optLetter, text: optText });
-        });
-
-        if (correctAnsStr) {
-          const directLetter = correctAnsStr.match(/[A-D]/i);
-          if (directLetter) chosenCorrect = directLetter[0].toUpperCase();
-        }
-
-        parsedQuestions.push({
-          id: `raw_q_${Date.now()}_${idx}`,
-          type: 'single_choice',
-          content: questionPrompt,
-          options,
-          correct_answer: { answer: chosenCorrect },
-          explanation,
-          difficulty,
-          point_weight: 0.25
-        });
-        return;
-      }
-
-      // C. DẠNG 3: Trả lời ngắn
+      // =========================================================================
+      // 6. DẠNG 3: TRẢ LỜI NGẮN (Tự luận điền số hoặc chuỗi ngắn)
+      // =========================================================================
       const shortAnswerVal = correctAnsStr || '0';
       parsedQuestions.push({
-        id: `raw_q_${Date.now()}_${idx}`,
+        id: `import_q_${Date.now()}_${idx}`,
         type: 'short_answer',
         content: contentBlock,
         options: [],

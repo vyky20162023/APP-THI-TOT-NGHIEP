@@ -84,15 +84,22 @@ export default function ExamList() {
 
   // Bộ lọc theo môn và từ khóa tìm kiếm
   const filteredExams = exams.filter((exam) => {
+    const sLow = selectedSubject.toLowerCase().trim();
     const matchSubject =
-      selectedSubject === 'all' ||
-      exam.subjects?.name?.toLowerCase() === selectedSubject.toLowerCase() ||
-      exam.subjects?.code?.toLowerCase() === selectedSubject.toLowerCase();
+      sLow === 'all' ||
+      exam.subject_id === selectedSubject ||
+      exam.subjects?.id === selectedSubject ||
+      exam.subjects?.name?.toLowerCase() === sLow ||
+      exam.subjects?.code?.toLowerCase() === sLow ||
+      exam.subjects?.name?.toLowerCase().includes(sLow);
 
+    const qLow = searchQuery.toLowerCase().trim();
     const matchSearch =
-      !searchQuery ||
-      exam.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      exam.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      !qLow ||
+      exam.title.toLowerCase().includes(qLow) ||
+      exam.description?.toLowerCase().includes(qLow) ||
+      exam.subjects?.name?.toLowerCase().includes(qLow) ||
+      exam.subjects?.code?.toLowerCase().includes(qLow);
 
     return matchSubject && matchSearch;
   });

@@ -10,6 +10,7 @@ import {
   parseDocxExam,
   parsePdfExam,
   parseRawTextExam,
+  detectSubjectFromText,
   downloadSampleExcelTemplate,
   downloadSampleWordTemplate
 } from '../../utils/examParsers';
@@ -42,6 +43,7 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
   // Exam Metadata
   const [examTitle, setExamTitle] = useState('Đề Thi Thử Tốt Nghiệp THPT 2025 - Khảo Thí Mới');
   const [subjectId, setSubjectId] = useState(THPT_SUBJECTS[0].id);
+  const [detectedSubjectHint, setDetectedSubjectHint] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(50);
   const [passingScore, setPassingScore] = useState(5.0);
   const [isPublished, setIsPublished] = useState(true);
@@ -62,6 +64,12 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
     setSelectedFile(file);
     setParseError('');
     setParsing(true);
+
+    // Tự động lấy tên file (bỏ đuôi) làm tiêu đề đề thi
+    const cleanTitle = file.name.replace(/\.[^/.]+$/, '').trim();
+    if (cleanTitle) {
+      setExamTitle(cleanTitle);
+    }
 
     try {
       const ext = file.name.split('.').pop().toLowerCase();
@@ -85,6 +93,15 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
       }
 
       setParsedQuestions(questions);
+
+      // Tự động nhận diện môn học dựa trên nội dung câu hỏi và tên file
+      const sampleText = questions.slice(0, 8).map((q) => q.content).join(' ');
+      const detected = detectSubjectFromText(sampleText, file.name);
+      if (detected) {
+        setSubjectId(detected.id);
+        setDetectedSubjectHint(`Đã tự động chọn môn: ${detected.name} (${detected.code})`);
+      }
+
       try {
         if (soundEffects && typeof soundEffects.playClick === 'function') {
           soundEffects.playClick();
@@ -118,6 +135,14 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
       }
 
       setParsedQuestions(questions);
+
+      // Tự động nhận diện môn học từ văn bản dán
+      const detected = detectSubjectFromText(rawText, examTitle);
+      if (detected) {
+        setSubjectId(detected.id);
+        setDetectedSubjectHint(`Đã tự động chọn môn: ${detected.name} (${detected.code})`);
+      }
+
       try {
         if (soundEffects && typeof soundEffects.playClick === 'function') {
           soundEffects.playClick();
@@ -302,8 +327,11 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
                 </label>
                 <select
                   value={subjectId}
-                  onChange={(e) => setSubjectId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-medium bg-white focus:ring-2 focus:ring-brand-200 focus:border-brand-500"
+                  onChange={(e) => {
+                    setSubjectId(e.target.value);
+                    setDetectedSubjectHint('');
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-semibold bg-white text-slate-800 focus:ring-2 focus:ring-brand-200 focus:border-brand-500"
                 >
                   {THPT_SUBJECTS.map((sub) => (
                     <option key={sub.id} value={sub.id}>
@@ -311,6 +339,12 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
                     </option>
                   ))}
                 </select>
+                {detectedSubjectHint && (
+                  <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1 mt-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{detectedSubjectHint}</span>
+                  </span>
+                )}
               </div>
 
               <div>
