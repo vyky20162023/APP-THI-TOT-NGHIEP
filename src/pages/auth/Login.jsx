@@ -25,20 +25,29 @@ export default function Login() {
       const data = await signIn(email, password);
       
       // Nếu là giáo viên hoặc admin, tự động chuyển vào Báo cáo Phổ điểm & Quản trị
-      if (from === '/' && data?.user) {
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .maybeSingle();
+      if (data?.user) {
+        let userRole = data.user.user_metadata?.role;
+        
+        try {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', data.user.id)
+            .maybeSingle();
+          if (prof?.role) {
+            userRole = prof.role;
+          }
+        } catch (e) {
+          console.warn('Lỗi đọc role từ profile:', e);
+        }
 
-        if (prof?.role === 'teacher' || prof?.role === 'admin') {
+        if (userRole === 'teacher' || userRole === 'admin') {
           navigate('/teacher-dashboard', { replace: true });
           return;
         }
       }
 
-      navigate(from, { replace: true });
+      navigate(from === '/' ? '/exams' : from, { replace: true });
     } catch (err) {
       console.error(err);
       if (err.message.includes('Invalid login credentials')) {

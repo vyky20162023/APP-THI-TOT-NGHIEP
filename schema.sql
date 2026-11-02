@@ -177,6 +177,11 @@ CREATE POLICY "Chính chủ mới được cập nhật profile của mình"
     USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
 
+CREATE POLICY "Cho phép người dùng tạo profile của chính mình"
+    ON public.profiles FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = id);
+
 -- --- BẢNG SUBJECTS ---
 CREATE POLICY "Mọi người đều được xem môn học đang hoạt động"
     ON public.subjects FOR SELECT

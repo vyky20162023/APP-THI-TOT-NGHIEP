@@ -37,7 +37,11 @@ export default function Register() {
 
       setSuccessMsg('Đăng ký tài khoản thành công! Đang chuyển hướng...');
       setTimeout(() => {
-        navigate('/exams');
+        if (role === 'teacher' || role === 'admin') {
+          navigate('/teacher-dashboard');
+        } else {
+          navigate('/exams');
+        }
       }, 1500);
     } catch (err) {
       console.error(err);

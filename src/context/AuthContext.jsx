@@ -9,8 +9,11 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState('student');
   const [loading, setLoading] = useState(true);
 
-  // Tải thông tin hồ sơ (profiles) từ Supabase
-  const fetchProfile = async (userId) => {
+  // Tải thông tin hồ sơ (profiles) từ Supabase với cơ chế dự phòng metadata thông minh
+  const fetchProfile = async (userObj) => {
+    const userId = typeof userObj === 'string' ? userObj : userObj?.id;
+    const metaRole = typeof userObj === 'object' ? userObj?.user_metadata?.role : null;
+
     if (!isSupabaseConfigured || !userId) {
       setProfile(null);
       setRole('student');
@@ -26,12 +29,32 @@ export function AuthProvider({ children }) {
 
       if (error) {
         console.error('Lỗi khi tải profile:', error);
-      } else if (data) {
+      }
+
+      if (data) {
         setProfile(data);
-        setRole(data.role || 'student');
+        // Ưu tiên role từ bảng profiles, nếu không có thì lấy từ metadata của Auth
+        setRole(data.role || metaRole || 'student');
+      } else {
+        // Trường hợp bảng profiles chưa kịp tạo qua trigger
+        const fallbackRole = metaRole || 'student';
+        setRole(fallbackRole);
+
+        const tempProfile = {
+          id: userId,
+          email: typeof userObj === 'object' ? userObj?.email : '',
+          full_name: typeof userObj === 'object' ? (userObj?.user_metadata?.full_name || userObj?.email?.split('@')[0]) : '',
+          role: fallbackRole,
+          school_name: typeof userObj === 'object' ? (userObj?.user_metadata?.school_name || 'Trường THCS & THPT Nguyễn Thái Bình') : 'Trường THCS & THPT Nguyễn Thái Bình',
+        };
+        setProfile(tempProfile);
+
+        // Tự động tạo bản ghi dự phòng vào bảng profiles
+        supabase.from('profiles').upsert(tempProfile).then(() => {});
       }
     } catch (err) {
       console.error('Exception khi tải profile:', err);
+      if (metaRole) setRole(metaRole);
     }
   };
 
@@ -46,7 +69,11 @@ export function AuthProvider({ children }) {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        fetchProfile(currentUser.id).finally(() => setLoading(false));
+        // Gán ngay vai trò từ metadata nếu có để không bị nhấp nháy giao diện
+        if (currentUser.user_metadata?.role) {
+          setRole(currentUser.user_metadata.role);
+        }
+        fetchProfile(currentUser).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -59,7 +86,10 @@ export function AuthProvider({ children }) {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        await fetchProfile(currentUser.id);
+        if (currentUser.user_metadata?.role) {
+          setRole(currentUser.user_metadata.role);
+        }
+        await fetchProfile(currentUser);
       } else {
         setProfile(null);
         setRole('student');
@@ -78,19 +108,42 @@ export function AuthProvider({ children }) {
       throw new Error('Supabase chưa được cấu hình. Vui lòng thêm VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY vào file .env');
     }
 
+    const assignedRole = metadata.role || 'student';
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: metadata.full_name || '',
-          role: metadata.role || 'student',
+          role: assignedRole,
           school_name: metadata.school_name || 'Trường THCS & THPT Nguyễn Thái Bình',
         },
       },
     });
 
     if (error) throw error;
+
+    // Gán role ngay cho state để phản hồi giao diện tức thì
+    setRole(assignedRole);
+
+    // Tự động lưu profile trực tiếp vào Supabase nếu session có sẵn
+    if (data?.user) {
+      try {
+        const newProf = {
+          id: data.user.id,
+          email: data.user.email,
+          full_name: metadata.full_name || '',
+          role: assignedRole,
+          school_name: metadata.school_name || 'Trường THCS & THPT Nguyễn Thái Bình',
+        };
+        await supabase.from('profiles').upsert(newProf);
+        setProfile(newProf);
+      } catch (e) {
+        console.warn('Lỗi ghi profile trực tiếp:', e);
+      }
+    }
+
     return data;
   };
 
@@ -107,7 +160,10 @@ export function AuthProvider({ children }) {
 
     if (error) throw error;
     if (data?.user) {
-      await fetchProfile(data.user.id);
+      if (data.user.user_metadata?.role) {
+        setRole(data.user.user_metadata.role);
+      }
+      await fetchProfile(data.user);
     }
     return data;
   };
@@ -124,7 +180,7 @@ export function AuthProvider({ children }) {
 
   const refreshProfile = async () => {
     if (user) {
-      await fetchProfile(user.id);
+      await fetchProfile(user);
     }
   };
 
