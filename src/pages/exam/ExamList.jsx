@@ -82,24 +82,41 @@ export default function ExamList() {
     }
   }, [subjectParam]);
 
+  // Hàm chuẩn hóa chuỗi tiếng Việt không dấu để so khớp tuyệt đối
+  const normalizeString = (str) =>
+    (str || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'd')
+      .replace(/[^a-z0-9]/g, '')
+      .trim();
+
   // Bộ lọc theo môn và từ khóa tìm kiếm
   const filteredExams = exams.filter((exam) => {
-    const sLow = selectedSubject.toLowerCase().trim();
-    const matchSubject =
-      sLow === 'all' ||
-      exam.subject_id === selectedSubject ||
-      exam.subjects?.id === selectedSubject ||
-      exam.subjects?.name?.toLowerCase() === sLow ||
-      exam.subjects?.code?.toLowerCase() === sLow ||
-      exam.subjects?.name?.toLowerCase().includes(sLow);
+    let matchSubject = false;
+    if (selectedSubject === 'all') {
+      matchSubject = true;
+    } else {
+      const normSel = normalizeString(selectedSubject);
+      const subCode = (exam.subjects?.code || '').toLowerCase();
+      const subNameNorm = normalizeString(exam.subjects?.name);
+      const subId = exam.subject_id || exam.subjects?.id || '';
 
-    const qLow = searchQuery.toLowerCase().trim();
+      matchSubject =
+        subId === selectedSubject ||
+        subCode === selectedSubject.toLowerCase() ||
+        subNameNorm === normSel ||
+        (normSel.length >= 3 && subNameNorm.includes(normSel)) ||
+        (subNameNorm.length >= 3 && normSel.includes(subNameNorm));
+    }
+
+    const normQuery = normalizeString(searchQuery);
     const matchSearch =
-      !qLow ||
-      exam.title.toLowerCase().includes(qLow) ||
-      exam.description?.toLowerCase().includes(qLow) ||
-      exam.subjects?.name?.toLowerCase().includes(qLow) ||
-      exam.subjects?.code?.toLowerCase().includes(qLow);
+      !searchQuery ||
+      normalizeString(exam.title).includes(normQuery) ||
+      normalizeString(exam.description).includes(normQuery) ||
+      normalizeString(exam.subjects?.name).includes(normQuery);
 
     return matchSubject && matchSearch;
   });
@@ -146,11 +163,14 @@ export default function ExamList() {
               className="w-full py-2 px-3 rounded-xl border border-slate-300 text-sm font-medium bg-white"
             >
               <option value="all">Tất cả môn học</option>
-              {subjects.map((sub) => (
-                <option key={sub.id} value={sub.name}>
-                  {sub.name}
-                </option>
-              ))}
+              {subjects.map((sub) => {
+                const meta = getSubjectMeta(sub.code || sub.name);
+                return (
+                  <option key={sub.id || sub.code} value={sub.code || sub.name}>
+                    {meta.name || sub.name}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>
@@ -173,18 +193,21 @@ export default function ExamList() {
           </button>
 
           {subjects.map((sub) => {
-            const meta = getSubjectMeta(sub.name || sub.code);
+            const meta = getSubjectMeta(sub.code || sub.name);
             const Icon = meta.icon;
+            const normSel = normalizeString(selectedSubject);
             const isSelected =
-              selectedSubject.toLowerCase() === sub.name.toLowerCase() ||
-              selectedSubject.toLowerCase() === sub.code?.toLowerCase();
+              selectedSubject === sub.code ||
+              selectedSubject === sub.id ||
+              sub.code?.toLowerCase() === selectedSubject.toLowerCase() ||
+              normalizeString(sub.name) === normSel;
 
             return (
               <button
                 key={sub.id || sub.code}
                 onClick={() => {
-                  setSelectedSubject(sub.name);
-                  setSearchParams({ subject: sub.name });
+                  setSelectedSubject(sub.code || sub.name);
+                  setSearchParams({ subject: sub.code || sub.name });
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   isSelected
@@ -193,7 +216,7 @@ export default function ExamList() {
                 }`}
               >
                 {Icon && <Icon className="w-3.5 h-3.5" />}
-                <span>{sub.name}</span>
+                <span>{meta.name || sub.name}</span>
               </button>
             );
           })}

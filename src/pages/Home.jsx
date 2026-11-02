@@ -175,7 +175,7 @@ export default function Home() {
             return (
               <Link
                 key={item.id}
-                to={`/exams?subject=${encodeURIComponent(item.name)}`}
+                to={`/exams?subject=${encodeURIComponent(item.code)}`}
                 className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-brand-500 hover:shadow-md transition-all text-center group cursor-pointer flex flex-col items-center justify-between"
               >
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${item.color}`}>

@@ -224,119 +224,95 @@ export async function parsePdfExam(file) {
 }
 
 /**
- * 4. Tự động nhận diện môn học dựa trên từ khóa trong văn bản hoặc tên file
- */
-export function detectSubjectFromText(text = '', filename = '') {
-  const combined = (filename + ' ' + text).toLowerCase();
-
-  const subjectKeywords = [
-    {
-      id: 'b1000000-0000-0000-0000-000000000009',
-      name: 'Giáo dục Kinh tế & Pháp luật',
-      code: 'CIV',
-      keywords: ['kinh tế', 'pháp luật', 'doanh nghiệp', 'thuế', 'hiến pháp', 'công dân', 'tài sản', 'thu nhập', 'gdktpl', 'civ', 'tiết kiệm', 'hợp đồng', 'chính sách xã hội', 'chị h', 'bán xe', 'hội nhập kinh tế', 'lao động', 'vi phạm pháp luật']
-    },
-    {
-      id: 'b1000000-0000-0000-0000-000000000001',
-      name: 'Toán học',
-      code: 'MATH',
-      keywords: ['toán', 'hàm số', 'tích phân', 'nguyên hàm', 'đạo hàm', 'hình học', 'mặt phẳng', 'mặt cầu', 'toạ độ', 'vectơ', 'logarit', 'math', 'cực trị', 'tiệm cận', 'đồng biến', 'nghịch biến']
-    },
-    {
-      id: 'b1000000-0000-0000-0000-000000000003',
-      name: 'Tiếng Anh',
-      code: 'ENG',
-      keywords: ['english', 'tiếng anh', 'choose the', 'pronunciation', 'stress', 'closest in meaning', 'opposite in meaning', 'passage', 'grammar', 'read the following', 'sentence']
-    },
-    {
-      id: 'b1000000-0000-0000-0000-000000000002',
-      name: 'Ngữ văn',
-      code: 'LIT',
-      keywords: ['ngữ văn', 'văn học', 'đoạn trích', 'tác giả', 'tác phẩm', 'nhà thơ', 'thơ', 'đọc hiểu văn bản', 'nghị luận', 'nhân vật']
-    },
-    {
-      id: 'b1000000-0000-0000-0000-000000000004',
-      name: 'Vật lí',
-      code: 'PHYS',
-      keywords: ['vật lí', 'vật lý', 'dao động', 'sóng cơ', 'từ trường', 'nhiệt độ', 'khí lý tưởng', 'hạt nhân', 'electron', 'điện trường', 'con lắc', 'chu kì', 'tần số']
-    },
-    {
-      id: 'b1000000-0000-0000-0000-000000000005',
-      name: 'Hóa học',
-      code: 'CHEM',
-      keywords: ['hóa học', 'este', 'ancol', 'axit', 'glucozơ', 'kim loại', 'phản ứng', 'dung dịch', 'phức chất', 'mol', 'peptit', 'amin', 'chất béo']
-    },
-    {
-      id: 'b1000000-0000-0000-0000-000000000006',
-      name: 'Sinh học',
-      code: 'BIO',
-      keywords: ['sinh học', 'gen', 'adn', 'arn', 'nhiễm sắc thể', 'đột biến', 'tế bào', 'quần thể', 'sinh thái', 'di truyền', 'alen', 'mARN', 'tARN']
-    },
-    {
-      id: 'b1000000-0000-0000-0000-000000000007',
-      name: 'Lịch sử',
-      code: 'HIST',
-      keywords: ['lịch sử', 'chiến dịch', 'cách mạng', 'kháng chiến', 'hiệp định', 'thực dân', 'đế quốc', 'năm 19', 'đảng cộng sản', 'quân đội']
-    },
-    {
-      id: 'b1000000-0000-0000-0000-000000000008',
-      name: 'Địa lí',
-      code: 'GEO',
-      keywords: ['địa lí', 'địa lý', 'biển đông', 'vùng kinh tế', 'đồng bằng', 'khí hậu', 'đô thị hóa', 'cơ cấu kinh tế', 'dân số', 'khoáng sản']
-    },
-    {
-      id: 'b1000000-0000-0000-0000-000000000010',
-      name: 'Tin học',
-      code: 'CS',
-      keywords: ['tin học', 'lập trình', 'python', 'thuật toán', 'cơ sở dữ liệu', 'sql', 'mạng máy tính', 'trí tuệ nhân tạo', 'biến', 'mảng', 'hàm']
-    },
-    {
-      id: 'b1000000-0000-0000-0000-000000000011',
-      name: 'Công nghệ',
-      code: 'TECH',
-      keywords: ['công nghệ', 'mạch điện', 'cảm biến', 'trồng trọt', 'chăn nuôi', 'nông nghiệp', 'linh kiện', 'điện tử']
-    }
-  ];
-
-  let bestMatch = null;
-  let maxScore = 0;
-
-  for (const s of subjectKeywords) {
-    let score = 0;
-    for (const kw of s.keywords) {
-      if (combined.includes(kw)) {
-        score++;
-      }
-    }
-    if (score > maxScore) {
-      maxScore = score;
-      bestMatch = s;
-    }
-  }
-
-  return bestMatch;
-}
-
-/**
- * 5. Trình phân tích văn bản thô thông minh (Smart Regex Parser Engine)
- * Bóc tách tự động:
- * - Dạng 1: Nhiều lựa chọn (A, B, C, D) - Hỗ trợ cả xuống dòng và cùng 1 dòng
- * - Dạng 2: Đúng / Sai 4 ý (a, b, c, d)
- * - Dạng 3: Trả lời ngắn
- * - KaTeX: $...$
+ * 4. Trình phân tích văn bản thô thông minh theo chuẩn Bộ GD&ĐT 2025 (Section-Aware Parser Engine)
+ * Tự động phân chia đề thi thành từng phần chuẩn xác:
+ * - PHẦN I: Câu trắc nghiệm nhiều phương án lựa chọn (A, B, C, D)
+ * - PHẦN II: Câu trắc nghiệm đúng sai (4 ý a, b, c, d chấm bậc thang)
+ * - PHẦN III: Câu trắc nghiệm trả lời ngắn (điền số / từ)
+ * Bảo toàn 100% thứ tự câu hỏi và công thức KaTeX
  */
 export function parseRawTextExam(text) {
   if (!text) return [];
 
-  // Chuẩn hóa ngắt dòng
   const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // Tìm các vị trí bắt đầu câu hỏi: "Câu 1:", "Câu 1.", "Bài 1:", "Question 1:", "1."
-  const questionPattern = /(?:^|\n)\s*(?:Câu|Bài|Question|\d+)[\s.]*(\d+)[\s.:-]+\s*/gi;
-  
+  // Regex nhận diện các mốc phân chia Phần của Bộ GD&ĐT
+  const part1Regex = /(?:^|\n)\s*(?:PHẦN|Phần|PART)\s*(?:I|1|THỨ NHẤT)[\s.:\-–—]*([^\n]*)/i;
+  const part2Regex = /(?:^|\n)\s*(?:PHẦN|Phần|PART)\s*(?:II|2|THỨ HAI)[\s.:\-–—]*([^\n]*)/i;
+  const part3Regex = /(?:^|\n)\s*(?:PHẦN|Phần|PART)\s*(?:III|3|THỨ BA)[\s.:\-–—]*([^\n]*)/i;
+
+  const matchP1 = normalized.search(part1Regex);
+  const matchP2 = normalized.search(part2Regex);
+  const matchP3 = normalized.search(part3Regex);
+
+  const hasExplicitParts = matchP1 !== -1 || matchP2 !== -1 || matchP3 !== -1;
+
+  if (hasExplicitParts) {
+    return parseExamWithSections(normalized, matchP1, matchP2, matchP3);
+  }
+
+  // Trường hợp không có tiêu đề Phần I, II, III rõ ràng: phân tích từng khối rồi tự động nhóm
+  return parseExamWithoutSections(normalized);
+}
+
+/**
+ * Phân tích đề thi khi có tiêu đề rõ ràng PHẦN I, PHẦN II, PHẦN III
+ */
+function parseExamWithSections(text, idxP1, idxP2, idxP3) {
+  const sections = [];
+
+  // Tạo danh sách các vị trí phần
+  const indices = [
+    { part: 1, index: idxP1 },
+    { part: 2, index: idxP2 },
+    { part: 3, index: idxP3 }
+  ].filter(p => p.index !== -1).sort((a, b) => a.index - b.index);
+
+  for (let i = 0; i < indices.length; i++) {
+    const cur = indices[i];
+    const startIdx = cur.index;
+    const endIdx = i + 1 < indices.length ? indices[i + 1].index : text.length;
+    const sectionText = text.substring(startIdx, endIdx);
+
+    sections.push({
+      partId: cur.part,
+      text: sectionText
+    });
+  }
+
+  const allQuestions = [];
+  let globalOrder = 1;
+
+  sections.forEach((sec) => {
+    const rawBlocks = splitIntoQuestionBlocks(sec.text);
+
+    rawBlocks.forEach((block, qIdx) => {
+      const q = parseSingleBlockByPart(block, sec.partId, qIdx + 1, globalOrder);
+      if (q) {
+        allQuestions.push(q);
+        globalOrder++;
+      }
+    });
+  });
+
+  return allQuestions;
+}
+
+/**
+ * Tách một đoạn văn bản thành các khối câu hỏi riêng biệt
+ */
+function splitIntoQuestionBlocks(rawText) {
+  // Loại bỏ dòng tiêu đề phần ở đầu
+  const lines = rawText.split('\n');
+  let content = rawText;
+  if (lines.length > 0 && /(?:PHẦN|Phần|PART)/i.test(lines[0])) {
+    content = lines.slice(1).join('\n');
+  }
+
+  const questionPattern = /(?:^|\n)\s*(?:Câu|Bài|\d+)[\s.]*(\d+)[\s.:-]+\s*/gi;
   const matches = [];
   let match;
-  while ((match = questionPattern.exec(normalized)) !== null) {
+  while ((match = questionPattern.exec(content)) !== null) {
     matches.push({
       index: match.index,
       number: match[1],
@@ -344,212 +320,235 @@ export function parseRawTextExam(text) {
     });
   }
 
-  // Nếu không tìm thấy tiền tố "Câu X", thử tách theo từng đoạn văn bản cách nhau bởi 2 dòng trống
-  let questionBlocks = [];
+  const blocks = [];
   if (matches.length > 0) {
     for (let i = 0; i < matches.length; i++) {
       const start = matches[i].index + matches[i].fullLength;
-      const end = i + 1 < matches.length ? matches[i + 1].index : normalized.length;
-      const block = normalized.substring(start, end).trim();
-      if (block) questionBlocks.push(block);
+      const end = i + 1 < matches.length ? matches[i + 1].index : content.length;
+      const block = content.substring(start, end).trim();
+      if (block) blocks.push(block);
     }
   } else {
-    questionBlocks = normalized
-      .split(/\n\s*\n/)
-      .map((b) => b.trim())
-      .filter((b) => b.length > 20);
+    // Nếu không có chữ "Câu X", tách theo 2 dòng trống
+    blocks.push(...content.split(/\n\s*\n/).map(b => b.trim()).filter(b => b.length > 25));
   }
 
-  const parsedQuestions = [];
+  return blocks;
+}
 
-  questionBlocks.forEach((block, idx) => {
-    try {
-      // 1. Tách phần Lời giải (Explanation) nếu có
-      let contentBlock = block;
-      let explanation = '';
-      const expMatch = block.match(/(?:Lời giải|Hướng dẫn giải|Giải chi tiết|Explanation)[:\s]*([\s\S]*)$/i);
-      if (expMatch) {
-        explanation = expMatch[1].trim();
-        contentBlock = block.substring(0, expMatch.index).trim();
+/**
+ * Phân tích một câu hỏi dựa trên Phần định sẵn
+ */
+function parseSingleBlockByPart(block, partId, partQuestionNumber, globalOrder) {
+  let contentBlock = block;
+  let explanation = '';
+
+  // 1. Tách lời giải nếu có
+  const expMatch = block.match(/(?:Lời giải|Hướng dẫn giải|Giải chi tiết|Explanation)[:\s]*([\s\S]*)$/i);
+  if (expMatch) {
+    explanation = expMatch[1].trim();
+    contentBlock = block.substring(0, expMatch.index).trim();
+  }
+
+  // 2. Tách đáp án khai báo
+  let correctAnsStr = '';
+  const ansMatch = contentBlock.match(/(?:Đáp án|Đáp án đúng|Key|Ans)[:\s]*([^\n]+)/i);
+  if (ansMatch) {
+    correctAnsStr = ansMatch[1].trim();
+    contentBlock = contentBlock.substring(0, ansMatch.index).trim();
+  }
+
+  // 3. Mức độ nhận thức
+  let difficulty = 'thong_hieu';
+  const diffMatch = contentBlock.match(/\[(Nhận biết|Thông hiểu|Vận dụng cao|Vận dụng|NB|TH|VD|VDC)\]/i);
+  if (diffMatch) {
+    difficulty = normalizeDifficulty(diffMatch[1]);
+    contentBlock = contentBlock.replace(diffMatch[0], '').trim();
+  }
+
+  // ===== XỬ LÝ THEO TỪNG PHẦN =====
+  if (partId === 1) {
+    // PHẦN I: Nhiều lựa chọn A, B, C, D
+    const choiceRegex = /(?:^|\n)\s*([A-D])[\.\)]\s*([\s\S]*?)(?=(?:\n\s*[A-D][\.\)]|$))/g;
+    const choiceMatches = [...contentBlock.matchAll(choiceRegex)];
+
+    let questionPrompt = contentBlock;
+    const options = [];
+    let chosenCorrect = 'A';
+
+    if (choiceMatches.length >= 2) {
+      const firstChoiceIndex = contentBlock.search(/(?:^|\n)\s*[A-D][\.\)]/);
+      if (firstChoiceIndex > 0) {
+        questionPrompt = contentBlock.substring(0, firstChoiceIndex).trim();
       }
 
-      // 2. Tìm đáp án khai báo ở cuối câu: "Đáp án: A", "Đáp án: C", "Key: B", "Ans: D"
-      let correctAnsStr = '';
-      const ansMatch = contentBlock.match(/(?:Đáp án|Đáp án đúng|Key|Ans|Đ\/a)[:\s]*([^\n]+)/i);
-      if (ansMatch) {
-        correctAnsStr = ansMatch[1].trim();
-        contentBlock = contentBlock.substring(0, ansMatch.index).trim();
-      }
-
-      // 3. Nhận diện mức độ nhận thức nếu có gắn thẻ: [Nhận biết], [Thông hiểu]...
-      let difficulty = 'thong_hieu';
-      const diffMatch = contentBlock.match(/\[(Nhận biết|Thông hiểu|Vận dụng cao|Vận dụng|NB|TH|VD|VDC)\]/i);
-      if (diffMatch) {
-        difficulty = normalizeDifficulty(diffMatch[1]);
-        contentBlock = contentBlock.replace(diffMatch[0], '').trim();
-      }
-
-      // =========================================================================
-      // 4. ƯU TIÊN 1: KIỂM TRA DẠNG 1 - NHIỀU LỰA CHỌN (A, B, C, D VIẾT HOA)
-      // Hỗ trợ phương án nằm trên các dòng riêng HOẶC nằm trên cùng 1 dòng
-      // =========================================================================
-      const choiceDelimRegex = /(?:^|\n|\t|\s{2,}|\.\s+|;\s+)([*#]?\s*([A-D])[\.\)])\s*/g;
-      const choicePositions = [];
-      let cMatch;
-
-      while ((cMatch = choiceDelimRegex.exec(contentBlock)) !== null) {
-        const fullMatch = cMatch[0];
-        const letter = cMatch[2]; // 'A', 'B', 'C', 'D'
-        const hasStar = fullMatch.includes('*') || fullMatch.includes('#');
-        // Vị trí bắt đầu token
-        const tokenStart = cMatch.index + (fullMatch.length - cMatch[1].length);
-        const textStart = cMatch.index + fullMatch.length;
-
-        choicePositions.push({
-          letter,
-          tokenStart,
-          textStart,
-          hasStar
-        });
-      }
-
-      // Lọc các vị trí A, B, C, D đảm bảo theo đúng thứ tự A -> B -> C -> D
-      const validLetters = ['A', 'B', 'C', 'D'];
-      let filteredPositions = [];
-      let expectedIdx = 0;
-
-      for (const pos of choicePositions) {
-        if (pos.letter === validLetters[expectedIdx]) {
-          filteredPositions.push(pos);
-          expectedIdx++;
-          if (expectedIdx >= validLetters.length) break;
+      choiceMatches.forEach((m) => {
+        const optLetter = m[1].toUpperCase();
+        let optText = m[2].trim();
+        if (optText.startsWith('*') || m[0].includes('*')) {
+          chosenCorrect = optLetter;
+          optText = optText.replace(/^\*\s*/, '');
         }
-      }
-
-      // Nếu tìm được ít nhất 3 phương án A, B, C (thường là đủ 4 A, B, C, D)
-      if (filteredPositions.length >= 3) {
-        const questionPrompt = contentBlock.substring(0, filteredPositions[0].tokenStart).trim();
-        const options = [];
-        let chosenCorrect = 'A';
-
-        for (let i = 0; i < filteredPositions.length; i++) {
-          const cur = filteredPositions[i];
-          const next = filteredPositions[i + 1];
-          const optEnd = next ? next.tokenStart : contentBlock.length;
-          let optText = contentBlock.substring(cur.textStart, optEnd).trim();
-
-          // Xóa dấu chấm hoặc dấu phẩy thừa ở cuối nếu có
-          optText = optText.replace(/[\s\t\r\n]+$/, '');
-
-          if (cur.hasStar || optText.startsWith('*')) {
-            chosenCorrect = cur.letter;
-            optText = optText.replace(/^\*\s*/, '');
-          }
-
-          options.push({
-            id: cur.letter,
-            text: optText
-          });
-        }
-
-        // Bổ sung đáp án nếu có dòng "Đáp án: [A-D]"
-        if (correctAnsStr) {
-          const directLetter = correctAnsStr.match(/[A-D]/);
-          if (directLetter) chosenCorrect = directLetter[0];
-        }
-
-        parsedQuestions.push({
-          id: `import_q_${Date.now()}_${idx}`,
-          type: 'single_choice',
-          content: questionPrompt || contentBlock,
-          options,
-          correct_answer: { answer: chosenCorrect },
-          explanation,
-          difficulty,
-          point_weight: 0.25
-        });
-        return;
-      }
-
-      // =========================================================================
-      // 5. ƯU TIÊN 2: KIỂM TRA DẠNG 2 - ĐÚNG / SAI 4 Ý (a, b, c, d CHỮ THƯỜNG)
-      // TUYỆT ĐỐI dùng cờ case-sensitive /g (KHÔNG dùng /i để không bắt nhầm A, B, C, D)
-      // =========================================================================
-      const tfRegex = /(?:^|\n)\s*([a-d])[\)\.]\s*([\s\S]*?)(?=(?:\n\s*[a-d][\)\.]|$))/g;
-      const tfMatches = [...contentBlock.matchAll(tfRegex)];
-
-      if (tfMatches.length >= 3) {
-        const firstTfIndex = contentBlock.search(/(?:^|\n)\s*[a-d][\)\.]/);
-        const questionPrompt = firstTfIndex > 0 ? contentBlock.substring(0, firstTfIndex).trim() : 'Xét tính đúng/sai của các mệnh đề sau:';
-
-        const tfOptions = [];
-        const tfCorrect = { a: true, b: false, c: true, d: false };
-
-        tfMatches.forEach((m) => {
-          const id = m[1].toLowerCase();
-          let optText = m[2].trim();
-
-          let isTrue = true;
-          if (/\((?:S|Sai|False|F)\)\s*$/i.test(optText)) {
-            isTrue = false;
-            optText = optText.replace(/\((?:S|Sai|False|F)\)\s*$/i, '').trim();
-          } else if (/\((?:Đ|Đúng|True|T)\)\s*$/i.test(optText)) {
-            isTrue = true;
-            optText = optText.replace(/\((?:Đ|Đúng|True|T)\)\s*$/i, '').trim();
-          }
-
-          tfOptions.push({ id, text: optText });
-          tfCorrect[id] = isTrue;
-        });
-
-        if (correctAnsStr) {
-          const pairs = correctAnsStr.split(/[,;\s]+/);
-          pairs.forEach((p) => {
-            const subMatch = p.match(/([a-d])\s*[-:.]*\s*([đdstf])/i);
-            if (subMatch) {
-              const letter = subMatch[1].toLowerCase();
-              const val = ['đ', 'd', 't'].includes(subMatch[2].toLowerCase());
-              tfCorrect[letter] = val;
-            }
-          });
-        }
-
-        parsedQuestions.push({
-          id: `import_q_${Date.now()}_${idx}`,
-          type: 'true_false',
-          content: questionPrompt,
-          options: tfOptions,
-          correct_answer: tfCorrect,
-          explanation,
-          difficulty,
-          point_weight: 1.00
-        });
-        return;
-      }
-
-      // =========================================================================
-      // 6. DẠNG 3: TRẢ LỜI NGẮN (Tự luận điền số hoặc chuỗi ngắn)
-      // =========================================================================
-      const shortAnswerVal = correctAnsStr || '0';
-      parsedQuestions.push({
-        id: `import_q_${Date.now()}_${idx}`,
-        type: 'short_answer',
-        content: contentBlock,
-        options: [],
-        correct_answer: {
-          value: shortAnswerVal,
-          accepted_values: [shortAnswerVal, shortAnswerVal.replace('.', ','), shortAnswerVal.replace(',', '.')]
-        },
-        explanation,
-        difficulty,
-        point_weight: 0.50
+        options.push({ id: optLetter, text: optText });
       });
-    } catch (e) {
-      console.warn(`Lỗi phân tích block câu hỏi thứ ${idx + 1}:`, e);
+
+      if (correctAnsStr) {
+        const directLetter = correctAnsStr.match(/[A-D]/i);
+        if (directLetter) chosenCorrect = directLetter[0].toUpperCase();
+      }
+    } else {
+      // Dự phòng nếu không tách được A B C D
+      options.push(
+        { id: 'A', text: 'Phương án A' },
+        { id: 'B', text: 'Phương án B' },
+        { id: 'C', text: 'Phương án C' },
+        { id: 'D', text: 'Phương án D' }
+      );
     }
+
+    return {
+      id: `raw_q_${Date.now()}_${globalOrder}`,
+      type: 'single_choice',
+      part_id: 1,
+      part_name: 'Phần I: Câu trắc nghiệm nhiều phương án lựa chọn',
+      part_question_number: partQuestionNumber,
+      global_order: globalOrder,
+      content: questionPrompt,
+      options,
+      correct_answer: { answer: chosenCorrect },
+      explanation,
+      difficulty,
+      point_weight: 0.25
+    };
+  }
+
+  if (partId === 2) {
+    // PHẦN II: Đúng / Sai 4 ý (a, b, c, d hoặc A, B, C, D)
+    // Hỗ trợ cả a), b), c), d) lẫn A., B., C., D.
+    let tfMatches = [...contentBlock.matchAll(/(?:^|\n)\s*([a-d])[\)\.]\s*([\s\S]*?)(?=(?:\n\s*[a-d][\)\.]|$))/gi)];
+    let isUpperCaseItem = false;
+
+    if (tfMatches.length < 3) {
+      // Thử tìm theo A., B., C., D. trong Phần II
+      tfMatches = [...contentBlock.matchAll(/(?:^|\n)\s*([A-D])[\.\)]\s*([\s\S]*?)(?=(?:\n\s*[A-D][\.\)]|$))/g)];
+      isUpperCaseItem = true;
+    }
+
+    let questionPrompt = contentBlock;
+    const tfOptions = [];
+    const tfCorrect = { a: true, b: false, c: true, d: false };
+
+    if (tfMatches.length >= 2) {
+      const firstItemIdx = isUpperCaseItem 
+        ? contentBlock.search(/(?:^|\n)\s*[A-D][\.\)]/)
+        : contentBlock.search(/(?:^|\n)\s*[a-d][\)\.]/i);
+
+      if (firstItemIdx > 0) {
+        questionPrompt = contentBlock.substring(0, firstItemIdx).trim();
+      }
+
+      tfMatches.forEach((m, idx) => {
+        const letter = ['a', 'b', 'c', 'd'][idx] || m[1].toLowerCase();
+        let optText = m[2].trim();
+
+        let isTrue = true;
+        if (/\((?:S|Sai|False|F)\)\s*$/i.test(optText)) {
+          isTrue = false;
+          optText = optText.replace(/\((?:S|Sai|False|F)\)\s*$/i, '').trim();
+        } else if (/\((?:Đ|Đúng|True|T)\)\s*$/i.test(optText)) {
+          isTrue = true;
+          optText = optText.replace(/\((?:Đ|Đúng|True|T)\)\s*$/i, '').trim();
+        }
+
+        tfOptions.push({ id: letter, text: optText });
+        tfCorrect[letter] = isTrue;
+      });
+
+      // Nếu có đáp án dạng: "a-Đ, b-S, c-Đ, d-Đ" hoặc "Đ, S, Đ, S"
+      if (correctAnsStr) {
+        const parts = correctAnsStr.split(/[,;\s]+/);
+        parts.forEach((p, idx) => {
+          const subMatch = p.match(/([a-d])\s*[-:.]*\s*([đdstf])/i);
+          if (subMatch) {
+            const l = subMatch[1].toLowerCase();
+            const val = ['đ', 'd', 't'].includes(subMatch[2].toLowerCase());
+            tfCorrect[l] = val;
+          } else if (['đ', 's', 'd', 't', 'f'].includes(p.toLowerCase())) {
+            const l = ['a', 'b', 'c', 'd'][idx];
+            if (l) tfCorrect[l] = ['đ', 'd', 't'].includes(p.toLowerCase());
+          }
+        });
+      }
+    } else {
+      tfOptions.push(
+        { id: 'a', text: 'Mệnh đề a' },
+        { id: 'b', text: 'Mệnh đề b' },
+        { id: 'c', text: 'Mệnh đề c' },
+        { id: 'd', text: 'Mệnh đề d' }
+      );
+    }
+
+    return {
+      id: `raw_q_${Date.now()}_${globalOrder}`,
+      type: 'true_false',
+      part_id: 2,
+      part_name: 'Phần II: Câu trắc nghiệm đúng sai',
+      part_question_number: partQuestionNumber,
+      global_order: globalOrder,
+      content: questionPrompt,
+      options: tfOptions,
+      correct_answer: tfCorrect,
+      explanation,
+      difficulty,
+      point_weight: 1.00
+    };
+  }
+
+  // PHẦN III: Trả lời ngắn
+  const shortVal = correctAnsStr || '0';
+  return {
+    id: `raw_q_${Date.now()}_${globalOrder}`,
+    type: 'short_answer',
+    part_id: 3,
+    part_name: 'Phần III: Câu trắc nghiệm trả lời ngắn',
+    part_question_number: partQuestionNumber,
+    global_order: globalOrder,
+    content: contentBlock,
+    options: [],
+    correct_answer: {
+      value: shortVal,
+      accepted_values: [shortVal, shortVal.replace('.', ','), shortVal.replace(',', '.')]
+    },
+    explanation,
+    difficulty,
+    point_weight: 0.50
+  };
+}
+
+/**
+ * Phân tích đề thi khi không có tiêu đề Phần (Tự động nhóm)
+ */
+function parseExamWithoutSections(text) {
+  const blocks = splitIntoQuestionBlocks(text);
+  const questions = [];
+
+  blocks.forEach((block, idx) => {
+    // Đoán dạng thức
+    let type = 'single_choice';
+    if (/(?:^|\n)\s*[a-d]\)\s*/i.test(block) && (block.match(/(?:^|\n)\s*[a-d]\)/gi) || []).length >= 3) {
+      type = 'true_false';
+    } else if (/(?:^|\n)\s*[A-D][\.\)]/g.test(block) && (block.match(/(?:^|\n)\s*[A-D][\.\)]/g) || []).length >= 3) {
+      type = 'single_choice';
+    } else if (/(?:trả lời ngắn|đáp số|điền số|kết quả)/i.test(block) || !/[A-D][\.\)]/g.test(block)) {
+      type = 'short_answer';
+    }
+
+    const partId = type === 'single_choice' ? 1 : type === 'true_false' ? 2 : 3;
+    const q = parseSingleBlockByPart(block, partId, idx + 1, idx + 1);
+    if (q) questions.push(q);
   });
 
-  return parsedQuestions;
+  return questions;
 }
 
 /**

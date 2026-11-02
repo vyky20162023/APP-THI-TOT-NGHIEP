@@ -10,7 +10,6 @@ import {
   parseDocxExam,
   parsePdfExam,
   parseRawTextExam,
-  detectSubjectFromText,
   downloadSampleExcelTemplate,
   downloadSampleWordTemplate
 } from '../../utils/examParsers';
@@ -43,7 +42,6 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
   // Exam Metadata
   const [examTitle, setExamTitle] = useState('Đề Thi Thử Tốt Nghiệp THPT 2025 - Khảo Thí Mới');
   const [subjectId, setSubjectId] = useState(THPT_SUBJECTS[0].id);
-  const [detectedSubjectHint, setDetectedSubjectHint] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(50);
   const [passingScore, setPassingScore] = useState(5.0);
   const [isPublished, setIsPublished] = useState(true);
@@ -64,12 +62,6 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
     setSelectedFile(file);
     setParseError('');
     setParsing(true);
-
-    // Tự động lấy tên file (bỏ đuôi) làm tiêu đề đề thi
-    const cleanTitle = file.name.replace(/\.[^/.]+$/, '').trim();
-    if (cleanTitle) {
-      setExamTitle(cleanTitle);
-    }
 
     try {
       const ext = file.name.split('.').pop().toLowerCase();
@@ -93,15 +85,6 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
       }
 
       setParsedQuestions(questions);
-
-      // Tự động nhận diện môn học dựa trên nội dung câu hỏi và tên file
-      const sampleText = questions.slice(0, 8).map((q) => q.content).join(' ');
-      const detected = detectSubjectFromText(sampleText, file.name);
-      if (detected) {
-        setSubjectId(detected.id);
-        setDetectedSubjectHint(`Đã tự động chọn môn: ${detected.name} (${detected.code})`);
-      }
-
       try {
         if (soundEffects && typeof soundEffects.playClick === 'function') {
           soundEffects.playClick();
@@ -135,14 +118,6 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
       }
 
       setParsedQuestions(questions);
-
-      // Tự động nhận diện môn học từ văn bản dán
-      const detected = detectSubjectFromText(rawText, examTitle);
-      if (detected) {
-        setSubjectId(detected.id);
-        setDetectedSubjectHint(`Đã tự động chọn môn: ${detected.name} (${detected.code})`);
-      }
-
       try {
         if (soundEffects && typeof soundEffects.playClick === 'function') {
           soundEffects.playClick();
@@ -327,11 +302,8 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
                 </label>
                 <select
                   value={subjectId}
-                  onChange={(e) => {
-                    setSubjectId(e.target.value);
-                    setDetectedSubjectHint('');
-                  }}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-semibold bg-white text-slate-800 focus:ring-2 focus:ring-brand-200 focus:border-brand-500"
+                  onChange={(e) => setSubjectId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-medium bg-white focus:ring-2 focus:ring-brand-200 focus:border-brand-500"
                 >
                   {THPT_SUBJECTS.map((sub) => (
                     <option key={sub.id} value={sub.id}>
@@ -339,12 +311,6 @@ export default function ExamImportModal({ isOpen, onClose, onSuccess }) {
                     </option>
                   ))}
                 </select>
-                {detectedSubjectHint && (
-                  <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1 mt-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                    <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{detectedSubjectHint}</span>
-                  </span>
-                )}
               </div>
 
               <div>
@@ -538,39 +504,52 @@ Câu 3: Tìm giá trị lớn nhất của hàm số?
 
               {/* Danh sách từng câu hỏi */}
               <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                {parsedQuestions.map((q, idx) => (
-                  <div
-                    key={q.id || idx}
-                    className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:border-brand-300 transition-all space-y-2 relative group"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0">
-                          {idx + 1}
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
-                          q.type === 'single_choice'
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : q.type === 'true_false'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-amber-50 text-amber-800 border-amber-200'
-                        }`}>
-                          {q.type === 'single_choice' ? 'Dạng 1: Nhiều lựa chọn (0.25đ)' : q.type === 'true_false' ? 'Dạng 2: Đúng/Sai bậc thang (1.0đ)' : 'Dạng 3: Trả lời ngắn (0.5đ)'}
-                        </span>
-                        <span className="text-[10px] font-semibold text-slate-400 capitalize">
-                          [{q.difficulty}]
-                        </span>
-                      </div>
+                {parsedQuestions.map((q, idx) => {
+                  const isFirstOfPart = idx === 0 || q.part_id !== parsedQuestions[idx - 1]?.part_id;
+                  const partTitle = q.part_name || (q.type === 'single_choice' ? 'PHẦN I: CÂU TRẮC NGHIỆM NHIỀU LỰA CHỌN' : q.type === 'true_false' ? 'PHẦN II: CÂU TRẮC NGHIỆM ĐÚNG SAI' : 'PHẦN III: CÂU TRẮC NGHIỆM TRẢ LỜI NGẮN');
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteQuestion(idx)}
-                        title="Xóa câu này"
-                        className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                  return (
+                    <React.Fragment key={q.id || idx}>
+                      {isFirstOfPart && (
+                        <div className="px-3.5 py-2 rounded-xl bg-slate-900 text-white flex items-center justify-between text-xs font-bold mt-2 shadow-xs">
+                          <span className="uppercase tracking-wider">{partTitle}</span>
+                          <span className="text-[10px] text-brand-300 font-semibold">
+                            {q.type === 'single_choice' ? '0.25đ / câu' : q.type === 'true_false' ? 'Tối đa 1.0đ / câu' : '0.5đ / câu'}
+                          </span>
+                        </div>
+                      )}
+
+                      <div
+                        className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:border-brand-300 transition-all space-y-2 relative group"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-lg bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0">
+                              {idx + 1}
+                            </span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                              q.type === 'single_choice'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : q.type === 'true_false'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                            }`}>
+                              {q.type === 'single_choice' ? 'Dạng 1: Nhiều lựa chọn' : q.type === 'true_false' ? 'Dạng 2: Đúng/Sai bậc thang' : 'Dạng 3: Trả lời ngắn'}
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-400 capitalize">
+                              [{q.difficulty}]
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteQuestion(idx)}
+                            title="Xóa câu này"
+                            className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
 
                     {/* Nội dung câu hỏi */}
                     <div className="text-xs sm:text-sm font-medium text-slate-800">
@@ -645,7 +624,9 @@ Câu 3: Tìm giá trị lớn nhất của hàm số?
                       </div>
                     )}
                   </div>
-                ))}
+                </React.Fragment>
+              );
+            })}
               </div>
             </div>
           ) : null}

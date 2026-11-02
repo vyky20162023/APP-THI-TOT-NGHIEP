@@ -414,6 +414,52 @@ export default function ExamRoom() {
   const currentQ = questions[currentQuestionIndex];
   const answeredTotal = Object.keys(answers).length;
 
+  // Phân loại các Phần chuẩn cấu trúc Bộ GD&ĐT 2025
+  const getPartMeta = (type, partId) => {
+    const p = partId || (type === 'single_choice' ? 1 : type === 'true_false' ? 2 : 3);
+    if (p === 1) {
+      return {
+        part: 1,
+        title: 'PHẦN I. CÂU TRẮC NGHIỆM NHIỀU PHƯƠNG ÁN LỰA CHỌN',
+        badge: 'bg-blue-100 text-blue-800 border-blue-200',
+        desc: 'Thí sinh chỉ chọn một phương án trong bốn phương án A, B, C, D.',
+        scoreRule: 'Mỗi câu trả lời đúng được 0,25 điểm',
+        border: 'border-blue-300',
+        gradient: 'from-blue-600 to-indigo-700',
+      };
+    }
+    if (p === 2) {
+      return {
+        part: 2,
+        title: 'PHẦN II. CÂU TRẮC NGHIỆM ĐÚNG SAI',
+        badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        desc: 'Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn Đúng hoặc Sai.',
+        scoreRule: 'Điểm tối đa của 1 câu là 1,0 điểm: Đúng 1 ý = 0,1đ | Đúng 2 ý = 0,25đ | Đúng 3 ý = 0,5đ | Đúng 4 ý = 1,0đ',
+        border: 'border-emerald-300',
+        gradient: 'from-emerald-600 to-teal-700',
+      };
+    }
+    return {
+      part: 3,
+      title: 'PHẦN III. CÂU TRẮC NGHIỆM TRẢ LỜI NGẮN',
+      badge: 'bg-amber-100 text-amber-800 border-amber-200',
+      desc: 'Thí sinh tự điền đáp án số hoặc chuỗi kết quả vào ô trống.',
+      scoreRule: 'Mỗi câu trả lời đúng được 0,5 điểm',
+      border: 'border-amber-300',
+      gradient: 'from-amber-600 to-orange-700',
+    };
+  };
+
+  const countPart1 = questions.filter(q => (q.part_id === 1 || q.type === 'single_choice')).length;
+  const countPart2 = questions.filter(q => (q.part_id === 2 || q.type === 'true_false')).length;
+  const countPart3 = questions.filter(q => (q.part_id === 3 || q.type === 'short_answer')).length;
+
+  const availableParts = [
+    { part: 1, name: 'Phần I (Nhiều lựa chọn)', count: countPart1 },
+    { part: 2, name: 'Phần II (Đúng / Sai)', count: countPart2 },
+    { part: 3, name: 'Phần III (Trả lời ngắn)', count: countPart3 },
+  ].filter(p => p.count > 0);
+
   return (
     <div className="min-h-screen bg-slate-100 pb-20">
       {/* Cảnh báo chuyển tab (Tab-switching modal/banner) */}
@@ -514,17 +560,71 @@ export default function ExamRoom() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* CỘT CÂU HỎI (3 phần 4 chiều rộng) */}
           <div className="lg:col-span-3 space-y-6">
-            {questions.map((q, idx) => (
-              <QuestionCard
-                key={q.id || idx}
-                question={q}
-                index={idx}
-                answer={answers[q.id]}
-                onAnswerChange={(val) => saveAnswer(q.id, val)}
-                isFlagged={Boolean(flagged[q.id])}
-                onToggleFlag={() => toggleFlag(q.id)}
-              />
-            ))}
+            {/* Thanh Tab Chuyển Nhanh Theo Phần Chuẩn Bộ GD&ĐT */}
+            {availableParts.length > 1 && (
+              <div className="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-xs flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 mr-1 hidden sm:inline">
+                  Chuyển nhanh phần:
+                </span>
+                {availableParts.map((part) => (
+                  <button
+                    key={part.part}
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById(`section-part-${part.part}`);
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all hover:scale-102 active:scale-98 cursor-pointer flex items-center gap-1.5 bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700"
+                  >
+                    <span className={`w-2 h-2 rounded-full ${part.part === 1 ? 'bg-blue-600' : part.part === 2 ? 'bg-emerald-600' : 'bg-amber-600'}`}></span>
+                    <span>{part.name}</span>
+                    <span className="text-[10px] text-slate-400">({part.count} câu)</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Danh sách câu hỏi kèm Banner phân chia từng Phần */}
+            {questions.map((q, idx) => {
+              const currentMeta = getPartMeta(q.type, q.part_id);
+              const prevMeta = idx > 0 ? getPartMeta(questions[idx - 1].type, questions[idx - 1].part_id) : null;
+              const isFirstOfPart = idx === 0 || currentMeta.part !== prevMeta?.part;
+
+              return (
+                <React.Fragment key={q.id || idx}>
+                  {/* Banner tiêu đề phân chia Phần của Bộ GD&ĐT */}
+                  {isFirstOfPart && (
+                    <div
+                      id={`section-part-${currentMeta.part}`}
+                      className={`p-5 rounded-3xl bg-gradient-to-r ${currentMeta.gradient} text-white shadow-md space-y-2 mt-4 mb-2`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-base sm:text-lg font-black tracking-tight uppercase">
+                          {currentMeta.title}
+                        </h3>
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 text-white border border-white/30 backdrop-blur-xs">
+                          {currentMeta.scoreRule}
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-normal">
+                        {currentMeta.desc}
+                      </p>
+                    </div>
+                  )}
+
+                  <QuestionCard
+                    question={q}
+                    index={idx}
+                    answer={answers[q.id]}
+                    onAnswerChange={(val) => saveAnswer(q.id, val)}
+                    isFlagged={Boolean(flagged[q.id])}
+                    onToggleFlag={() => toggleFlag(q.id)}
+                  />
+                </React.Fragment>
+              );
+            })}
 
             {/* Bottom Actions */}
             <div className="flex justify-end pt-4 pb-12">
